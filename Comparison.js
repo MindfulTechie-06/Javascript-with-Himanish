@@ -24,3 +24,10 @@ console.log(x<=10); //true
 
 //console.log( null +2);
 console.log(null>=21);
+
+
+console.log(null<=21);//true because null is converted to 0 in numeric comparison
+console.log(null>21);//false because null is converted to 0 in numeric comparison
+console.log(null<21);//true because null is converted to 0 in numeric comparison
+
+console.log(undefined>=0);
