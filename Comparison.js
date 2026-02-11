@@ -22,3 +22,5 @@ console.log(x>=10); //true
 //6.Less than or equal to
 console.log(x<=10); //true
 
+//console.log( null +2);
+console.log(null>=21);
