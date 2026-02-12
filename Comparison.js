@@ -30,4 +30,15 @@ console.log(null<=21);//true because null is converted to 0 in numeric compariso
 console.log(null>21);//false because null is converted to 0 in numeric comparison
 console.log(null<21);//true because null is converted to 0 in numeric comparison
 
-console.log(undefined>=0);
+console.log(undefined>=0);//false because undefined is converted to NaN in numeric comparison
+console.log(undefined<=0);//false because undefined is converted to NaN in numeric comparison
+console.log(undefined>0);//false because undefined is converted to NaN in numeric comparison
+console.log(undefined<0);//false because undefined is converted to NaN in numeric comparison
+
+// ===is the strict equality operator, which checks for both value and type equality. It does not perform type coercion, meaning that if the operands are of different types, it will return false without attempting to convert them to a common type.
+
+console.log(0===false); //false because they are of different types
+
+console.log("23"===23); //false because they are of different types
+
+console.log(null===undefined); //false because they are of different types
