@@ -20,3 +20,22 @@ console.log(str4.length);
 console.log(str4.toUpperCase());
 console.log(str4.charAt(3));
 console.log(str4.indexOf("o"));
+
+
+let var_name= "Himanish";
+
+console.log(var_name.substring(0,5));
+console.log(var_name.slice(-5,5));
+
+let str5 = "   JavaScript   ";
+console.log(str5.trim()); // removes whitespace from both ends of the string
+
+const url = "https://www.example.com";
+const domain = url.replace("https://www.", "");
+console.log(domain); // Output: example.com
+
+console.log(url.includes("example"));
+
+let new_str = "A quick brown fox jumps over the lazy dog";
+console.log(new_str.split(" ")); // splits the string into an array of words
+console.log(typeof new_str.split(" ")); // Output: object (because it returns an array  which is an object in JavaScript)
