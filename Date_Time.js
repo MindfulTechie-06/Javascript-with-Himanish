@@ -19,3 +19,9 @@ console.log(newdate.toLocaleString());
 
 let date1 = new Date(12-12-2025);
 console.log(date1.toLocaleString());// This will not give the expected result because the expression 12-12-2025 is evaluated as a mathematical operation, resulting in -2025. When passed to the Date constructor, it creates a date based on the number of milliseconds since January 1, 1970, which is not the intended date.
+
+// Timestamps
+let mytimestamp = Date.now(); // returns the number of milliseconds since January 1, 1970
+console.log(mytimestamp);
+console.log(mydate.getTime());// This will return the timestamp for the date represented by mydate, which is December 25, 2023.
+console.log(mytimestamp-mydate.getTime());// This will give the difference in milliseconds between the current time and December 25, 2023.
