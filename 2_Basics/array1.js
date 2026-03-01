@@ -22,3 +22,6 @@ console.log(arr);
 // shift() - removes the first element of the array
 arr.shift();
 console.log(arr);
+
+// length - returns the number of elements in the array
+console.log(arr.length); // Output: 5
