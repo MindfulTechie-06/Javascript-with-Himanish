@@ -7,3 +7,10 @@ let fruits = ["Apple", "Banana", "Cherry", "Date", "Elderberry"];
 console.log(fruits[0]); // Output: Apple
 console.log(fruits[1]); // Output: Banana
 console.log(fruits[2]); // Output: Cherry
+
+// Array Methods
+
+let arr=[1,2,3,4,5]
+// push() - adds an element to the end of the array
+arr.push(6);
+console.log(arr); // Output: [1, 2, 3, 4, 5, 6]
