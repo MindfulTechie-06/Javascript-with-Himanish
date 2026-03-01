@@ -14,3 +14,11 @@ let arr=[1,2,3,4,5]
 // push() - adds an element to the end of the array
 arr.push(6);
 console.log(arr); // Output: [1, 2, 3, 4, 5, 6]
+arr.pop(); // removes the last element of the array
+console.log(arr);
+// unshift() - adds an element to the beginning of the array
+arr.unshift(9);
+console.log(arr);
+// shift() - removes the first element of the array
+arr.shift();
+console.log(arr);
