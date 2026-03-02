@@ -32,3 +32,17 @@ console.log(arr.indexOf(8));// Output: -1 (not found)
 const newAr = arr.join();
 console.log(newAr); // Output: "1,2,3,4,5"
 console.log(typeof newAr); // Output: string
+
+// Difference between Slice and splice 
+
+const newArr1=[0,1,2,3,4,5];
+
+// slice() - returns a shallow copy of a portion of an array into a new array object selected from start to end (end not included)
+const slicedArr = newArr1.slice(2, 5);
+console.log(slicedArr);
+console.log(newArr1); // Original array remains unchanged
+
+// splice() - changes the contents of an array by removing or replacing existing elements and/or adding new elements in place
+const splicedArr = newArr1.splice(2, 3, 6, 7);
+console.log(splicedArr);
+console.log(newArr1); // Original array is modified
