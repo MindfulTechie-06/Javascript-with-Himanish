@@ -25,3 +25,10 @@ console.log(arr);
 
 // length - returns the number of elements in the array
 console.log(arr.length); // Output: 5
+
+console.log(arr.includes(2));// Output: true (2 is found in the array)
+console.log(arr.indexOf(8));// Output: -1 (not found)
+
+const newAr = arr.join();
+console.log(newAr); // Output: "1,2,3,4,5"
+console.log(typeof newAr); // Output: string
