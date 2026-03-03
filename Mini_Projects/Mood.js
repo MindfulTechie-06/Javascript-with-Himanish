@@ -1,4 +1,4 @@
-const readline = require("readline");
+import readline from "readline";
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -28,7 +28,7 @@ const quotes = {
     ]
 };
 
-rl.question("Enter your mood (happy, sad, stressed, motivated): ", function(mood) {
+rl.question("Enter your mood (happy, sad, stressed, motivated): ", (mood) => {
 
     mood = mood.toLowerCase();
 
