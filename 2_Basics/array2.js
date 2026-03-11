@@ -13,3 +13,11 @@ console.log(all_heroes);
 const another_array=[1,2,3[4,5,6],7,8,9,[98,99,100]];
 const flat_array = another_array.flat();
 console.log(flat_array); // Output: [1, 2, 3, 4, 5, 6, 7, 8, 9, 98, 99, 100]
+
+// converting a string to array 
+console.log(Array.from("Hello World")); // Output: ['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd']
+
+// converting an array to string
+const arr = [1, 2, 3, 4, 5];
+const str = arr.toString();
+console.log(str); // Output: "1,2,3,4,5"
