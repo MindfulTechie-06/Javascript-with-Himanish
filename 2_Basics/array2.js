@@ -32,4 +32,4 @@ let s3=30;
 let s4=40;
 let s5=50;
 
-console.log(Array.of(s1,s2,s3,s4,s5)); // Output: [10, 20, 30, 40, 50]
+console.log(Array.of(s1,s2,s3,s4,s5)); // Output: [10, 20, 30, 40, 50] 
