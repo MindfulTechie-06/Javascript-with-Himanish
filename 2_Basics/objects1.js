@@ -26,6 +26,16 @@ console.log("Symbol Property:", student[mysym]);
 
 // changing the value of a property
 student.email = "himanish@chat.com";
-Object.freeze(student); // This will prevent any changes to the student object
+//Object.freeze(student); // This will prevent any changes to the student object
 
 console.log(student);
+// creating a function
+student.greet = function() {
+    console.log(`Hello User ` );
+};
+student.greettwo = function() {
+    console.log(`Hello User ,${this.name}` );
+};
+// calling the function
+console.log(student.greet());
+console.log(student.greettwo());
