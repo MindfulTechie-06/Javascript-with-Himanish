@@ -28,6 +28,4 @@ console.log("Symbol Property:", student[mysym]);
 student.email = "himanish@chat.com";
 Object.freeze(student); // This will prevent any changes to the student object
 
-student.email = "himaanish@micro.com"; // This will not change the email property
-console.log("Email after trying to change:", student.email);
-
+console.log(student);
