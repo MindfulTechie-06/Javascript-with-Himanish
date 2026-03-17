@@ -11,6 +11,7 @@ const student = {
     age: 20,
     [mysym]:"This is a symbol",
     marks: 85,
+    email:"him@google.com",
     isPassed: true,
     lastlogindays: ["Monday", "Wednesday", "Friday"],
     
@@ -24,8 +25,9 @@ console.log(typeof(student.isPassed));
 console.log("Symbol Property:", student[mysym]);
 
 // changing the value of a property
-student.marks = 90;
+student.email = "himanish@chat.com";
 Object.freeze(student); // This will prevent any changes to the student object
-student.marks = 95; // This will not change the marks property
-console.log(student);
+
+student.email = "himaanish@micro.com"; // This will not change the email property
+console.log("Email after trying to change:", student.email);
 
