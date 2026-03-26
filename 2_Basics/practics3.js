@@ -1,4 +1,5 @@
 // Array of student objects
+// 
 const students = [
   { id: 1, name: "Rahul", marks: 85 },
   { id: 2, name: "Anjali", marks: 92 },
@@ -40,10 +41,10 @@ function getHighScorers(minMarks) {
 addStudent(4, "Priya", 88);
 
 displayStudents();
-
+// Find and display top scorer
 const top = getTopScorer();
 console.log("\nTop Scorer:", top);
-
+// Find and display students scoring above 80
 const highScorers = getHighScorers(80);
 console.log("\nStudents scoring above 80:");
-console.log(highScorers);
+console.log(highScorers);// displaying 
