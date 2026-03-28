@@ -7,3 +7,5 @@ const student = {
     age: 20,
     marks: 85,
     email: "",}
+
+    
