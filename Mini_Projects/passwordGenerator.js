@@ -1,3 +1,4 @@
+//Password Generator Program 
 import readline from "readline";
 
 const rl = readline.createInterface({
@@ -9,7 +10,7 @@ const lower = "abcdefghijklmnopqrstuvwxyz";
 const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const numbers = "0123456789";
 const symbols = "!@#$%^&*()_+[]{}|;:,.<>?";
-
+// Function to generate password based on user preferences
 function generatePassword(length, useUpper, useNumbers, useSymbols) {
     let chars = lower;
 
