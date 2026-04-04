@@ -1,11 +1,26 @@
 import readline from "readline";
+import fs from "fs";
 
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
 
-let habits = [];
+const FILE = "habits.json";
+
+// Load habits from file
+function loadHabits() {
+    if (!fs.existsSync(FILE)) return [];
+    const data = fs.readFileSync(FILE);
+    return JSON.parse(data);
+}
+
+// Save habits to file
+function saveHabits(habits) {
+    fs.writeFileSync(FILE, JSON.stringify(habits, null, 2));
+}
+
+let habits = loadHabits();
 
 // Menu
 function showMenu() {
@@ -42,6 +57,7 @@ function handleMenu(choice) {
 function addHabit() {
     rl.question("Enter habit: ", (habit) => {
         habits.push({ name: habit, done: false });
+        saveHabits(habits);
         console.log("✅ Habit added");
         showMenu();
     });
@@ -62,6 +78,7 @@ function markDone() {
         let index = num - 1;
         if (habits[index]) {
             habits[index].done = true;
+            saveHabits(habits);
             console.log("✔ Marked as done");
         } else {
             console.log("Invalid number");
