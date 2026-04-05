@@ -56,7 +56,8 @@ function handleMenu(choice) {
 // Add Habit
 function addHabit() {
     rl.question("Enter habit: ", (habit) => {
-        habits.push({ name: habit, done: false });
+        habits.push({ name: habit, done: false , streak: 0,
+    lastCompleted: null });
         saveHabits(habits);
         console.log("✅ Habit added");
         showMenu();
@@ -67,7 +68,7 @@ function addHabit() {
 function viewHabits() {
     console.log("\nYour Habits:");
     habits.forEach((h, i) => {
-        console.log(`${i + 1}. ${h.name} [${h.done ? "✔" : "❌"}]`);
+        console.log(`${i + 1}. ${h.name} [${h.done ? "✔" : "❌"}] | Streak: ${h.streak}`);
     });
     showMenu();
 }
@@ -76,13 +77,33 @@ function viewHabits() {
 function markDone() {
     rl.question("Enter habit number: ", (num) => {
         let index = num - 1;
+
         if (habits[index]) {
-            habits[index].done = true;
-            saveHabits(habits);
-            console.log("✔ Marked as done");
+            let today = new Date().toDateString();
+
+            if (habits[index].lastCompleted === today) {
+                console.log("⚠ Already marked today");
+            } else {
+                let yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+
+                if (habits[index].lastCompleted === yesterday.toDateString()) {
+                    habits[index].streak += 1;
+                } else {
+                    habits[index].streak = 1;
+                }
+
+                habits[index].lastCompleted = today;
+                habits[index].done = true;
+
+                saveHabits(habits);
+
+                console.log(`🔥 Streak: ${habits[index].streak}`);
+            }
         } else {
             console.log("Invalid number");
         }
+
         showMenu();
     });
 }
