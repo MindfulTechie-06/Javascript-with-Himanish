@@ -8,21 +8,34 @@ const rl = readline.createInterface({
 
 const FILE = "habits.json";
 
-// Load habits from file
+// Load habits
 function loadHabits() {
     if (!fs.existsSync(FILE)) return [];
-    const data = fs.readFileSync(FILE);
-    return JSON.parse(data);
+    return JSON.parse(fs.readFileSync(FILE));
 }
 
-// Save habits to file
+// Save habits
 function saveHabits(habits) {
     fs.writeFileSync(FILE, JSON.stringify(habits, null, 2));
 }
 
 let habits = loadHabits();
 
-// Menu
+// 🟢 DAILY RESET SYSTEM
+function resetDailyStatus() {
+    let today = new Date().toDateString();
+
+    habits.forEach(habit => {
+        if (habit.lastUpdated !== today) {
+            habit.done = false;
+            habit.lastUpdated = today;
+        }
+    });
+
+    saveHabits(habits);
+}
+
+// 🟢 MENU
 function showMenu() {
     console.log("\n===== HABIT TRACKER =====");
     console.log("1. Add Habit");
@@ -33,6 +46,7 @@ function showMenu() {
     rl.question("Choose option: ", handleMenu);
 }
 
+// 🟢 HANDLE MENU
 function handleMenu(choice) {
     switch (choice) {
         case "1":
@@ -53,27 +67,41 @@ function handleMenu(choice) {
     }
 }
 
-// Add Habit
+// 🟢 ADD HABIT
 function addHabit() {
     rl.question("Enter habit: ", (habit) => {
-        habits.push({ name: habit, done: false , streak: 0,
-    lastCompleted: null });
+        habits.push({
+            name: habit,
+            done: false,
+            streak: 0,
+            lastCompleted: null,
+            lastUpdated: new Date().toDateString()
+        });
+
         saveHabits(habits);
         console.log("✅ Habit added");
         showMenu();
     });
 }
 
-// View Habits
+// 🟢 VIEW HABITS
 function viewHabits() {
     console.log("\nYour Habits:");
-    habits.forEach((h, i) => {
-        console.log(`${i + 1}. ${h.name} [${h.done ? "✔" : "❌"}] | Streak: ${h.streak}`);
-    });
+
+    if (habits.length === 0) {
+        console.log("No habits found");
+    } else {
+        habits.forEach((h, i) => {
+            console.log(
+                `${i + 1}. ${h.name} [${h.done ? "✔" : "❌"}] | Streak: ${h.streak}`
+            );
+        });
+    }
+
     showMenu();
 }
 
-// Mark Done
+// 🟢 MARK DONE + STREAK LOGIC
 function markDone() {
     rl.question("Enter habit number: ", (num) => {
         let index = num - 1;
@@ -108,5 +136,6 @@ function markDone() {
     });
 }
 
-// Start
+// 🟢 START APP
+resetDailyStatus();
 showMenu();
