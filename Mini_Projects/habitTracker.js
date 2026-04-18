@@ -21,7 +21,7 @@ function saveHabits(habits) {
 
 let habits = loadHabits();
 
-// 🟢 DAILY RESET SYSTEM
+// 🟢 DAILY RESET
 function resetDailyStatus() {
     let today = new Date().toDateString();
 
@@ -41,7 +41,9 @@ function showMenu() {
     console.log("1. Add Habit");
     console.log("2. View Habits");
     console.log("3. Mark Habit as Done");
-    console.log("4. Exit");
+    console.log("4. Delete Habit");
+    console.log("5. Edit Habit");
+    console.log("6. Exit");
 
     rl.question("Choose option: ", handleMenu);
 }
@@ -59,6 +61,12 @@ function handleMenu(choice) {
             markDone();
             break;
         case "4":
+            deleteHabit();
+            break;
+        case "5":
+            editHabit();
+            break;
+        case "6":
             rl.close();
             break;
         default:
@@ -101,7 +109,7 @@ function viewHabits() {
     showMenu();
 }
 
-// 🟢 MARK DONE + STREAK LOGIC
+// 🟢 MARK DONE + STREAK
 function markDone() {
     rl.question("Enter habit number: ", (num) => {
         let index = num - 1;
@@ -136,6 +144,43 @@ function markDone() {
     });
 }
 
-// 🟢 START APP
+// 🟢 DELETE HABIT
+function deleteHabit() {
+    rl.question("Enter habit number to delete: ", (num) => {
+        let index = num - 1;
+
+        if (habits[index]) {
+            console.log(`🗑 Deleted: ${habits[index].name}`);
+            habits.splice(index, 1);
+            saveHabits(habits);
+        } else {
+            console.log("Invalid number");
+        }
+
+        showMenu();
+    });
+}
+
+// 🟢 EDIT HABIT
+function editHabit() {
+    rl.question("Enter habit number to edit: ", (num) => {
+        let index = num - 1;
+
+        if (habits[index]) {
+            rl.question("Enter new habit name: ", (newName) => {
+                habits[index].name = newName;
+                saveHabits(habits);
+
+                console.log("✏ Habit updated");
+                showMenu();
+            });
+        } else {
+            console.log("Invalid number");
+            showMenu();
+        }
+    });
+}
+
+// 🟢 START
 resetDailyStatus();
 showMenu();
