@@ -78,22 +78,28 @@ function handleMenu(choice) {
 // 🟢 ADD HABIT
 function addHabit() {
     rl.question("Enter habit: ", (habit) => {
-        habits.push({
-            name: habit,
-            done: false,
-            streak: 0,
-            lastCompleted: null,
-            lastUpdated: new Date().toDateString()
-        });
+        rl.question("Enter priority (high/medium/low): ", (priority) => {
 
-        saveHabits(habits);
-        console.log("✅ Habit added");
-        showMenu();
+            habits.push({
+                name: habit,
+                priority: priority.toLowerCase(),
+                done: false,
+                streak: 0,
+                lastCompleted: null,
+                lastUpdated: new Date().toDateString()
+            });
+
+            saveHabits(habits);
+            console.log("✅ Habit added");
+            showMenu();
+        });
     });
 }
 
 // 🟢 VIEW HABITS
 function viewHabits() {
+    sortHabitsByPriority();
+
     console.log("\nYour Habits:");
 
     if (habits.length === 0) {
@@ -101,12 +107,20 @@ function viewHabits() {
     } else {
         habits.forEach((h, i) => {
             console.log(
-                `${i + 1}. ${h.name} [${h.done ? "✔" : "❌"}] | Streak: ${h.streak}`
+                `${i + 1}. ${h.name} (${h.priority}) [${h.done ? "✔" : "❌"}] | Streak: ${h.streak}`
             );
         });
     }
 
     showMenu();
+}
+// 🟢 SORT HABITS BY PRIORITY
+function sortHabitsByPriority() {
+    const priorityOrder = { high: 1, medium: 2, low: 3 };
+
+    habits.sort((a, b) => {
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+    });
 }
 
 // 🟢 MARK DONE + STREAK
