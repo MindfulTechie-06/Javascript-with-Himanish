@@ -35,6 +35,12 @@ function resetDailyStatus() {
     saveHabits(habits);
 }
 
+// 🟢 SORT BY PRIORITY
+function sortHabitsByPriority() {
+    const order = { high: 1, medium: 2, low: 3 };
+    habits.sort((a, b) => order[a.priority] - order[b.priority]);
+}
+
 // 🟢 MENU
 function showMenu() {
     console.log("\n===== HABIT TRACKER =====");
@@ -43,7 +49,8 @@ function showMenu() {
     console.log("3. Mark Habit as Done");
     console.log("4. Delete Habit");
     console.log("5. Edit Habit");
-    console.log("6. Exit");
+    console.log("6. View Stats");
+    console.log("7. Exit");
 
     rl.question("Choose option: ", handleMenu);
 }
@@ -51,24 +58,13 @@ function showMenu() {
 // 🟢 HANDLE MENU
 function handleMenu(choice) {
     switch (choice) {
-        case "1":
-            addHabit();
-            break;
-        case "2":
-            viewHabits();
-            break;
-        case "3":
-            markDone();
-            break;
-        case "4":
-            deleteHabit();
-            break;
-        case "5":
-            editHabit();
-            break;
-        case "6":
-            rl.close();
-            break;
+        case "1": addHabit(); break;
+        case "2": viewHabits(); break;
+        case "3": markDone(); break;
+        case "4": deleteHabit(); break;
+        case "5": editHabit(); break;
+        case "6": viewStats(); break;
+        case "7": rl.close(); break;
         default:
             console.log("Invalid choice");
             showMenu();
@@ -114,16 +110,8 @@ function viewHabits() {
 
     showMenu();
 }
-// 🟢 SORT HABITS BY PRIORITY
-function sortHabitsByPriority() {
-    const priorityOrder = { high: 1, medium: 2, low: 3 };
 
-    habits.sort((a, b) => {
-        return priorityOrder[a.priority] - priorityOrder[b.priority];
-    });
-}
-
-// 🟢 MARK DONE + STREAK
+// 🟢 MARK DONE
 function markDone() {
     rl.question("Enter habit number: ", (num) => {
         let index = num - 1;
@@ -158,7 +146,7 @@ function markDone() {
     });
 }
 
-// 🟢 DELETE HABIT
+// 🟢 DELETE
 function deleteHabit() {
     rl.question("Enter habit number to delete: ", (num) => {
         let index = num - 1;
@@ -175,18 +163,23 @@ function deleteHabit() {
     });
 }
 
-// 🟢 EDIT HABIT
+// 🟢 EDIT
 function editHabit() {
     rl.question("Enter habit number to edit: ", (num) => {
         let index = num - 1;
 
         if (habits[index]) {
-            rl.question("Enter new habit name: ", (newName) => {
-                habits[index].name = newName;
-                saveHabits(habits);
+            rl.question("Enter new name: ", (newName) => {
+                rl.question("Enter new priority (high/medium/low): ", (newPriority) => {
 
-                console.log("✏ Habit updated");
-                showMenu();
+                    habits[index].name = newName;
+                    habits[index].priority = newPriority.toLowerCase();
+
+                    saveHabits(habits);
+                    console.log("✏ Habit updated");
+
+                    showMenu();
+                });
             });
         } else {
             console.log("Invalid number");
@@ -195,6 +188,27 @@ function editHabit() {
     });
 }
 
-// 🟢 START
+// 🟢 STATS DASHBOARD
+function viewStats() {
+    let total = habits.length;
+    let completed = habits.filter(h => h.done).length;
+
+    let completionRate = total === 0 ? 0 : ((completed / total) * 100).toFixed(2);
+
+    let highestStreak = 0;
+    habits.forEach(h => {
+        if (h.streak > highestStreak) highestStreak = h.streak;
+    });
+
+    console.log("\n===== STATISTICS =====");
+    console.log("Total Habits:", total);
+    console.log("Completed Today:", completed);
+    console.log("Completion Rate:", completionRate + "%");
+    console.log("Highest Streak:", highestStreak);
+
+    showMenu();
+}
+
+// START
 resetDailyStatus();
 showMenu();
