@@ -8,34 +8,32 @@ const rl = readline.createInterface({
 
 const FILE = "habits.json";
 
-// Load habits
+// Load
 function loadHabits() {
     if (!fs.existsSync(FILE)) return [];
     return JSON.parse(fs.readFileSync(FILE));
 }
 
-// Save habits
+// Save
 function saveHabits(habits) {
     fs.writeFileSync(FILE, JSON.stringify(habits, null, 2));
 }
 
 let habits = loadHabits();
 
-// 🟢 DAILY RESET
+// 🟢 RESET
 function resetDailyStatus() {
     let today = new Date().toDateString();
-
-    habits.forEach(habit => {
-        if (habit.lastUpdated !== today) {
-            habit.done = false;
-            habit.lastUpdated = today;
+    habits.forEach(h => {
+        if (h.lastUpdated !== today) {
+            h.done = false;
+            h.lastUpdated = today;
         }
     });
-
     saveHabits(habits);
 }
 
-// 🟢 SORT BY PRIORITY
+// 🟢 PRIORITY SORT
 function sortHabitsByPriority() {
     const order = { high: 1, medium: 2, low: 3 };
     habits.sort((a, b) => order[a.priority] - order[b.priority]);
@@ -50,7 +48,9 @@ function showMenu() {
     console.log("4. Delete Habit");
     console.log("5. Edit Habit");
     console.log("6. View Stats");
-    console.log("7. Exit");
+    console.log("7. Search Habit");
+    console.log("8. Filter Habits");
+    console.log("9. Exit");
 
     rl.question("Choose option: ", handleMenu);
 }
@@ -64,7 +64,9 @@ function handleMenu(choice) {
         case "4": deleteHabit(); break;
         case "5": editHabit(); break;
         case "6": viewStats(); break;
-        case "7": rl.close(); break;
+        case "7": searchHabit(); break;
+        case "8": filterHabits(); break;
+        case "9": rl.close(); break;
         default:
             console.log("Invalid choice");
             showMenu();
@@ -77,6 +79,7 @@ function addHabit() {
         rl.question("Enter priority (high/medium/low): ", (priority) => {
 
             habits.push({
+                id: Date.now(),
                 name: habit,
                 priority: priority.toLowerCase(),
                 done: false,
@@ -92,21 +95,17 @@ function addHabit() {
     });
 }
 
-// 🟢 VIEW HABITS
+// 🟢 VIEW
 function viewHabits() {
     sortHabitsByPriority();
 
     console.log("\nYour Habits:");
 
-    if (habits.length === 0) {
-        console.log("No habits found");
-    } else {
-        habits.forEach((h, i) => {
-            console.log(
-                `${i + 1}. ${h.name} (${h.priority}) [${h.done ? "✔" : "❌"}] | Streak: ${h.streak}`
-            );
-        });
-    }
+    habits.forEach((h, i) => {
+        console.log(
+            `${i + 1}. ${h.name} (${h.priority}) [${h.done ? "✔" : "❌"}] | Streak: ${h.streak}`
+        );
+    });
 
     showMenu();
 }
@@ -138,8 +137,6 @@ function markDone() {
 
                 console.log(`🔥 Streak: ${habits[index].streak}`);
             }
-        } else {
-            console.log("Invalid number");
         }
 
         showMenu();
@@ -148,15 +145,13 @@ function markDone() {
 
 // 🟢 DELETE
 function deleteHabit() {
-    rl.question("Enter habit number to delete: ", (num) => {
+    rl.question("Enter habit number: ", (num) => {
         let index = num - 1;
 
         if (habits[index]) {
-            console.log(`🗑 Deleted: ${habits[index].name}`);
             habits.splice(index, 1);
             saveHabits(habits);
-        } else {
-            console.log("Invalid number");
+            console.log("🗑 Deleted");
         }
 
         showMenu();
@@ -165,48 +160,77 @@ function deleteHabit() {
 
 // 🟢 EDIT
 function editHabit() {
-    rl.question("Enter habit number to edit: ", (num) => {
+    rl.question("Enter habit number: ", (num) => {
         let index = num - 1;
 
         if (habits[index]) {
-            rl.question("Enter new name: ", (newName) => {
-                rl.question("Enter new priority (high/medium/low): ", (newPriority) => {
+            rl.question("New name: ", (name) => {
+                rl.question("New priority: ", (priority) => {
 
-                    habits[index].name = newName;
-                    habits[index].priority = newPriority.toLowerCase();
+                    habits[index].name = name;
+                    habits[index].priority = priority.toLowerCase();
 
                     saveHabits(habits);
-                    console.log("✏ Habit updated");
+                    console.log("✏ Updated");
 
                     showMenu();
                 });
             });
         } else {
-            console.log("Invalid number");
             showMenu();
         }
     });
 }
 
-// 🟢 STATS DASHBOARD
+// 🟢 STATS
 function viewStats() {
     let total = habits.length;
-    let completed = habits.filter(h => h.done).length;
+    let done = habits.filter(h => h.done).length;
 
-    let completionRate = total === 0 ? 0 : ((completed / total) * 100).toFixed(2);
+    let rate = total === 0 ? 0 : ((done / total) * 100).toFixed(2);
 
-    let highestStreak = 0;
-    habits.forEach(h => {
-        if (h.streak > highestStreak) highestStreak = h.streak;
-    });
+    let maxStreak = Math.max(...habits.map(h => h.streak), 0);
 
-    console.log("\n===== STATISTICS =====");
-    console.log("Total Habits:", total);
-    console.log("Completed Today:", completed);
-    console.log("Completion Rate:", completionRate + "%");
-    console.log("Highest Streak:", highestStreak);
+    console.log("\n===== STATS =====");
+    console.log("Total:", total);
+    console.log("Completed:", done);
+    console.log("Completion Rate:", rate + "%");
+    console.log("Highest Streak:", maxStreak);
 
     showMenu();
+}
+
+// 🟢 SEARCH
+function searchHabit() {
+    rl.question("Search keyword: ", (keyword) => {
+        let results = habits.filter(h =>
+            h.name.toLowerCase().includes(keyword.toLowerCase())
+        );
+
+        console.log("\nSearch Results:");
+        results.forEach(h => {
+            console.log(`${h.name} (${h.priority})`);
+        });
+
+        showMenu();
+    });
+}
+
+// 🟢 FILTER
+function filterHabits() {
+    rl.question("Filter (done/pending): ", (type) => {
+
+        let filtered = habits.filter(h =>
+            type === "done" ? h.done : !h.done
+        );
+
+        console.log("\nFiltered:");
+        filtered.forEach(h => {
+            console.log(`${h.name} (${h.priority})`);
+        });
+
+        showMenu();
+    });
 }
 
 // START
