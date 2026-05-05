@@ -8,32 +8,34 @@ const rl = readline.createInterface({
 
 const FILE = "habits.json";
 
-// Load
+// Load habits
 function loadHabits() {
     if (!fs.existsSync(FILE)) return [];
     return JSON.parse(fs.readFileSync(FILE));
 }
 
-// Save
+// Save habits
 function saveHabits(habits) {
     fs.writeFileSync(FILE, JSON.stringify(habits, null, 2));
 }
 
 let habits = loadHabits();
 
-// 🟢 RESET
+// 🟢 DAILY RESET
 function resetDailyStatus() {
     let today = new Date().toDateString();
+
     habits.forEach(h => {
         if (h.lastUpdated !== today) {
             h.done = false;
             h.lastUpdated = today;
         }
     });
+
     saveHabits(habits);
 }
 
-// 🟢 PRIORITY SORT
+// 🟢 SORT BY PRIORITY
 function sortHabitsByPriority() {
     const order = { high: 1, medium: 2, low: 3 };
     habits.sort((a, b) => order[a.priority] - order[b.priority]);
@@ -79,7 +81,6 @@ function addHabit() {
         rl.question("Enter priority (high/medium/low): ", (priority) => {
 
             habits.push({
-                id: Date.now(),
                 name: habit,
                 priority: priority.toLowerCase(),
                 done: false,
@@ -95,17 +96,21 @@ function addHabit() {
     });
 }
 
-// 🟢 VIEW
+// 🟢 VIEW HABITS
 function viewHabits() {
     sortHabitsByPriority();
 
     console.log("\nYour Habits:");
 
-    habits.forEach((h, i) => {
-        console.log(
-            `${i + 1}. ${h.name} (${h.priority}) [${h.done ? "✔" : "❌"}] | Streak: ${h.streak}`
-        );
-    });
+    if (habits.length === 0) {
+        console.log("No habits found");
+    } else {
+        habits.forEach((h, i) => {
+            console.log(
+                `${i + 1}. ${h.name} (${h.priority}) [${h.done ? "✔" : "❌"}] | Streak: ${h.streak}`
+            );
+        });
+    }
 
     showMenu();
 }
@@ -134,9 +139,10 @@ function markDone() {
                 habits[index].done = true;
 
                 saveHabits(habits);
-
                 console.log(`🔥 Streak: ${habits[index].streak}`);
             }
+        } else {
+            console.log("Invalid number");
         }
 
         showMenu();
@@ -145,13 +151,15 @@ function markDone() {
 
 // 🟢 DELETE
 function deleteHabit() {
-    rl.question("Enter habit number: ", (num) => {
+    rl.question("Enter habit number to delete: ", (num) => {
         let index = num - 1;
 
         if (habits[index]) {
+            console.log(`🗑 Deleted: ${habits[index].name}`);
             habits.splice(index, 1);
             saveHabits(habits);
-            console.log("🗑 Deleted");
+        } else {
+            console.log("Invalid number");
         }
 
         showMenu();
@@ -160,23 +168,24 @@ function deleteHabit() {
 
 // 🟢 EDIT
 function editHabit() {
-    rl.question("Enter habit number: ", (num) => {
+    rl.question("Enter habit number to edit: ", (num) => {
         let index = num - 1;
 
         if (habits[index]) {
-            rl.question("New name: ", (name) => {
-                rl.question("New priority: ", (priority) => {
+            rl.question("Enter new name: ", (newName) => {
+                rl.question("Enter new priority (high/medium/low): ", (newPriority) => {
 
-                    habits[index].name = name;
-                    habits[index].priority = priority.toLowerCase();
+                    habits[index].name = newName;
+                    habits[index].priority = newPriority.toLowerCase();
 
                     saveHabits(habits);
-                    console.log("✏ Updated");
+                    console.log("✏ Habit updated");
 
                     showMenu();
                 });
             });
         } else {
+            console.log("Invalid number");
             showMenu();
         }
     });
@@ -185,32 +194,40 @@ function editHabit() {
 // 🟢 STATS
 function viewStats() {
     let total = habits.length;
-    let done = habits.filter(h => h.done).length;
+    let completed = habits.filter(h => h.done).length;
 
-    let rate = total === 0 ? 0 : ((done / total) * 100).toFixed(2);
+    let rate = total === 0 ? 0 : ((completed / total) * 100).toFixed(2);
 
-    let maxStreak = Math.max(...habits.map(h => h.streak), 0);
+    let highestStreak = habits.length > 0
+        ? Math.max(...habits.map(h => h.streak))
+        : 0;
 
-    console.log("\n===== STATS =====");
-    console.log("Total:", total);
-    console.log("Completed:", done);
+    console.log("\n===== STATISTICS =====");
+    console.log("Total Habits:", total);
+    console.log("Completed Today:", completed);
     console.log("Completion Rate:", rate + "%");
-    console.log("Highest Streak:", maxStreak);
+    console.log("Highest Streak:", highestStreak);
 
     showMenu();
 }
 
 // 🟢 SEARCH
 function searchHabit() {
-    rl.question("Search keyword: ", (keyword) => {
+    rl.question("Enter keyword: ", (keyword) => {
+
         let results = habits.filter(h =>
             h.name.toLowerCase().includes(keyword.toLowerCase())
         );
 
         console.log("\nSearch Results:");
-        results.forEach(h => {
-            console.log(`${h.name} (${h.priority})`);
-        });
+
+        if (results.length === 0) {
+            console.log("No matching habits found");
+        } else {
+            results.forEach(h => {
+                console.log(`${h.name} (${h.priority})`);
+            });
+        }
 
         showMenu();
     });
@@ -224,10 +241,15 @@ function filterHabits() {
             type === "done" ? h.done : !h.done
         );
 
-        console.log("\nFiltered:");
-        filtered.forEach(h => {
-            console.log(`${h.name} (${h.priority})`);
-        });
+        console.log("\nFiltered Habits:");
+
+        if (filtered.length === 0) {
+            console.log("No habits found");
+        } else {
+            filtered.forEach(h => {
+                console.log(`${h.name} (${h.priority})`);
+            });
+        }
 
         showMenu();
     });
