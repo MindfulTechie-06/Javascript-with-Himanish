@@ -1,11 +1,24 @@
 import readline from "readline";
+import fs from "fs";
 
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
 
-let expenses = [];
+const FILE = "expenses.json";
+
+function loadExpenses() {
+  if (!fs.existsSync(FILE)) return [];
+  const data = fs.readFileSync(FILE, "utf-8");
+  return JSON.parse(data);
+}
+
+function saveExpenses(expenses) {
+  fs.writeFileSync(FILE, JSON.stringify(expenses, null, 2));
+}
+
+let expenses = loadExpenses();
 
 function showMenu() {
   console.log("\n===== SMART EXPENSE TRACKER =====");
@@ -41,21 +54,26 @@ function handleMenu(choice) {
 function addExpense() {
   rl.question("Enter expense title: ", (title) => {
     rl.question("Enter amount: ", (amount) => {
-      const parsedAmount = parseFloat(amount);
+      rl.question("Enter category: ", (category) => {
+        const parsedAmount = parseFloat(amount);
 
-      if (isNaN(parsedAmount) || parsedAmount <= 0) {
-        console.log("Please enter a valid amount.");
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+          console.log("Please enter a valid amount.");
+          showMenu();
+          return;
+        }
+
+        expenses.push({
+          title: title.trim(),
+          amount: parsedAmount,
+          category: category.trim(),
+          date: new Date().toLocaleString()
+        });
+
+        saveExpenses(expenses);
+        console.log("✅ Expense added and saved");
         showMenu();
-        return;
-      }
-
-      expenses.push({
-        title: title.trim(),
-        amount: parsedAmount
       });
-
-      console.log("✅ Expense added");
-      showMenu();
     });
   });
 }
@@ -67,7 +85,9 @@ function viewExpenses() {
     console.log("No expenses added yet.");
   } else {
     expenses.forEach((expense, index) => {
-      console.log(`${index + 1}. ${expense.title} - ₹${expense.amount}`);
+      console.log(
+        `${index + 1}. ${expense.title} - ₹${expense.amount} | ${expense.category} | ${expense.date}`
+      );
     });
   }
 
