@@ -25,7 +25,8 @@ function showMenu() {
   console.log("1. Add Expense");
   console.log("2. View Expenses");
   console.log("3. Show Total Spent");
-  console.log("4. Exit");
+  console.log("4. Show Category Summary");
+  console.log("5. Exit");
 
   rl.question("Choose an option: ", handleMenu);
 }
@@ -42,6 +43,9 @@ function handleMenu(choice) {
       showTotalSpent();
       break;
     case "4":
+      showCategorySummary();
+      break;
+    case "5":
       console.log("Exiting...");
       rl.close();
       break;
@@ -54,7 +58,7 @@ function handleMenu(choice) {
 function addExpense() {
   rl.question("Enter expense title: ", (title) => {
     rl.question("Enter amount: ", (amount) => {
-      rl.question("Enter category: ", (category) => {
+      rl.question("Enter category (food/travel/study/shopping/other): ", (category) => {
         const parsedAmount = parseFloat(amount);
 
         if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -66,7 +70,7 @@ function addExpense() {
         expenses.push({
           title: title.trim(),
           amount: parsedAmount,
-          category: category.trim(),
+          category: category.trim().toLowerCase(),
           date: new Date().toLocaleString()
         });
 
@@ -96,7 +100,31 @@ function viewExpenses() {
 
 function showTotalSpent() {
   const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  console.log(`\n💰 Total Spent: ₹${total}`);
+  console.log(`\n💰 Total Spent: ₹${total.toFixed(2)}`);
+  showMenu();
+}
+
+function showCategorySummary() {
+  if (expenses.length === 0) {
+    console.log("\nNo expenses to summarize.");
+    showMenu();
+    return;
+  }
+
+  const summary = {};
+
+  expenses.forEach((expense) => {
+    if (!summary[expense.category]) {
+      summary[expense.category] = 0;
+    }
+    summary[expense.category] += expense.amount;
+  });
+
+  console.log("\n===== CATEGORY SUMMARY =====");
+  for (const category in summary) {
+    console.log(`${category}: ₹${summary[category].toFixed(2)}`);
+  }
+
   showMenu();
 }
 
