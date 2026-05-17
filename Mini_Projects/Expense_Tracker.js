@@ -8,17 +8,31 @@ const rl = readline.createInterface({
 
 const FILE = "expenses.json";
 
-function loadExpenses() {
-  if (!fs.existsSync(FILE)) return [];
-  const data = fs.readFileSync(FILE, "utf-8");
-  return JSON.parse(data);
+// Load data
+function loadData() {
+  if (!fs.existsSync(FILE)) {
+    return { budget: 0, expenses: [] };
+  }
+
+  const data = JSON.parse(fs.readFileSync(FILE, "utf-8"));
+
+  // Backward compatibility if file still contains only an expense array
+  if (Array.isArray(data)) {
+    return { budget: 0, expenses: data };
+  }
+
+  return {
+    budget: data.budget || 0,
+    expenses: data.expenses || []
+  };
 }
 
-function saveExpenses(expenses) {
-  fs.writeFileSync(FILE, JSON.stringify(expenses, null, 2));
+// Save data
+function saveData() {
+  fs.writeFileSync(FILE, JSON.stringify(appData, null, 2));
 }
 
-let expenses = loadExpenses();
+let appData = loadData();
 
 function showMenu() {
   console.log("\n===== SMART EXPENSE TRACKER =====");
@@ -26,7 +40,9 @@ function showMenu() {
   console.log("2. View Expenses");
   console.log("3. Show Total Spent");
   console.log("4. Show Category Summary");
-  console.log("5. Exit");
+  console.log("5. Set Monthly Budget");
+  console.log("6. Show Budget Status");
+  console.log("7. Exit");
 
   rl.question("Choose an option: ", handleMenu);
 }
@@ -46,6 +62,12 @@ function handleMenu(choice) {
       showCategorySummary();
       break;
     case "5":
+      setBudget();
+      break;
+    case "6":
+      showBudgetStatus();
+      break;
+    case "7":
       console.log("Exiting...");
       rl.close();
       break;
@@ -67,15 +89,17 @@ function addExpense() {
           return;
         }
 
-        expenses.push({
+        appData.expenses.push({
           title: title.trim(),
           amount: parsedAmount,
           category: category.trim().toLowerCase(),
           date: new Date().toLocaleString()
         });
 
-        saveExpenses(expenses);
+        saveData();
         console.log("✅ Expense added and saved");
+
+        checkBudgetAlert();
         showMenu();
       });
     });
@@ -85,10 +109,10 @@ function addExpense() {
 function viewExpenses() {
   console.log("\n===== EXPENSE LIST =====");
 
-  if (expenses.length === 0) {
+  if (appData.expenses.length === 0) {
     console.log("No expenses added yet.");
   } else {
-    expenses.forEach((expense, index) => {
+    appData.expenses.forEach((expense, index) => {
       console.log(
         `${index + 1}. ${expense.title} - ₹${expense.amount} | ${expense.category} | ${expense.date}`
       );
@@ -99,13 +123,13 @@ function viewExpenses() {
 }
 
 function showTotalSpent() {
-  const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const total = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
   console.log(`\n💰 Total Spent: ₹${total.toFixed(2)}`);
   showMenu();
 }
 
 function showCategorySummary() {
-  if (expenses.length === 0) {
+  if (appData.expenses.length === 0) {
     console.log("\nNo expenses to summarize.");
     showMenu();
     return;
@@ -113,7 +137,7 @@ function showCategorySummary() {
 
   const summary = {};
 
-  expenses.forEach((expense) => {
+  appData.expenses.forEach((expense) => {
     if (!summary[expense.category]) {
       summary[expense.category] = 0;
     }
@@ -126,6 +150,55 @@ function showCategorySummary() {
   }
 
   showMenu();
+}
+
+function setBudget() {
+  rl.question("Enter monthly budget: ", (budget) => {
+    const parsedBudget = parseFloat(budget);
+
+    if (isNaN(parsedBudget) || parsedBudget <= 0) {
+      console.log("Please enter a valid budget amount.");
+      showMenu();
+      return;
+    }
+
+    appData.budget = parsedBudget;
+    saveData();
+
+    console.log(`✅ Monthly budget set to ₹${appData.budget.toFixed(2)}`);
+    checkBudgetAlert();
+    showMenu();
+  });
+}
+
+function showBudgetStatus() {
+  const totalSpent = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const remaining = appData.budget - totalSpent;
+
+  console.log("\n===== BUDGET STATUS =====");
+  console.log(`Budget: ₹${appData.budget.toFixed(2)}`);
+  console.log(`Spent: ₹${totalSpent.toFixed(2)}`);
+  console.log(`Remaining: ₹${remaining.toFixed(2)}`);
+
+  if (appData.budget === 0) {
+    console.log("No budget set yet.");
+  } else if (remaining < 0) {
+    console.log("⚠ Budget exceeded!");
+  } else if (remaining === 0) {
+    console.log("✅ Budget fully used.");
+  } else {
+    console.log("✅ You are within budget.");
+  }
+
+  showMenu();
+}
+
+function checkBudgetAlert() {
+  const totalSpent = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+  if (appData.budget > 0 && totalSpent > appData.budget) {
+    console.log(`\n⚠ Warning: Budget exceeded by ₹${(totalSpent - appData.budget).toFixed(2)}`);
+  }
 }
 
 showMenu();
