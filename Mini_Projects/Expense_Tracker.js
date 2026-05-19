@@ -47,7 +47,9 @@ function showMenu() {
   console.log("6. Show Budget Status");
   console.log("7. Edit Expense");
   console.log("8. Delete Expense");
-  console.log("9. Exit");
+  console.log("9. Search Expense");
+  console.log("10. Filter Expenses");
+  console.log("11. Exit");
 
   rl.question("Choose an option: ", handleMenu);
 }
@@ -59,40 +61,37 @@ function handleMenu(choice) {
     case "1":
       addExpense();
       break;
-
     case "2":
       viewExpenses();
       break;
-
     case "3":
       showTotalSpent();
       break;
-
     case "4":
       showCategorySummary();
       break;
-
     case "5":
       setBudget();
       break;
-
     case "6":
       showBudgetStatus();
       break;
-
     case "7":
       editExpense();
       break;
-
     case "8":
       deleteExpense();
       break;
-
     case "9":
+      searchExpense();
+      break;
+    case "10":
+      filterExpenses();
+      break;
+    case "11":
       console.log("Exiting...");
       rl.close();
       break;
-
     default:
       console.log("Invalid option");
       showMenu();
@@ -103,38 +102,29 @@ function handleMenu(choice) {
 
 function addExpense() {
   rl.question("Enter expense title: ", (title) => {
-
     rl.question("Enter amount: ", (amount) => {
+      rl.question("Enter category (food/travel/study/shopping/other): ", (category) => {
+        const parsedAmount = parseFloat(amount);
 
-      rl.question(
-        "Enter category (food/travel/study/shopping/other): ",
-        (category) => {
-
-          const parsedAmount = parseFloat(amount);
-
-          if (isNaN(parsedAmount) || parsedAmount <= 0) {
-            console.log("Please enter a valid amount.");
-            showMenu();
-            return;
-          }
-
-          appData.expenses.push({
-            id: Date.now(),
-            title: title.trim(),
-            amount: parsedAmount,
-            category: category.trim().toLowerCase(),
-            date: new Date().toLocaleString()
-          });
-
-          saveData();
-
-          console.log("✅ Expense added");
-
-          checkBudgetAlert();
-
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+          console.log("Please enter a valid amount.");
           showMenu();
+          return;
         }
-      );
+
+        appData.expenses.push({
+          id: Date.now(),
+          title: title.trim(),
+          amount: parsedAmount,
+          category: category.trim().toLowerCase(),
+          date: new Date().toLocaleString()
+        });
+
+        saveData();
+        console.log("✅ Expense added");
+        checkBudgetAlert();
+        showMenu();
+      });
     });
   });
 }
@@ -147,9 +137,7 @@ function viewExpenses() {
   if (appData.expenses.length === 0) {
     console.log("No expenses added yet.");
   } else {
-
     appData.expenses.forEach((expense, index) => {
-
       console.log(
         `${index + 1}. ${expense.title} - ₹${expense.amount} | ${expense.category} | ${expense.date}`
       );
@@ -162,21 +150,14 @@ function viewExpenses() {
 // ================= TOTAL SPENT =================
 
 function showTotalSpent() {
-
-  const total = appData.expenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0
-  );
-
+  const total = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
   console.log(`\n💰 Total Spent: ₹${total.toFixed(2)}`);
-
   showMenu();
 }
 
 // ================= CATEGORY SUMMARY =================
 
 function showCategorySummary() {
-
   if (appData.expenses.length === 0) {
     console.log("\nNo expenses available.");
     showMenu();
@@ -186,16 +167,13 @@ function showCategorySummary() {
   const summary = {};
 
   appData.expenses.forEach((expense) => {
-
     if (!summary[expense.category]) {
       summary[expense.category] = 0;
     }
-
     summary[expense.category] += expense.amount;
   });
 
   console.log("\n===== CATEGORY SUMMARY =====");
-
   for (const category in summary) {
     console.log(`${category}: ₹${summary[category].toFixed(2)}`);
   }
@@ -206,9 +184,7 @@ function showCategorySummary() {
 // ================= SET BUDGET =================
 
 function setBudget() {
-
   rl.question("Enter monthly budget: ", (budget) => {
-
     const parsedBudget = parseFloat(budget);
 
     if (isNaN(parsedBudget) || parsedBudget <= 0) {
@@ -218,11 +194,9 @@ function setBudget() {
     }
 
     appData.budget = parsedBudget;
-
     saveData();
 
     console.log(`✅ Budget set to ₹${parsedBudget.toFixed(2)}`);
-
     showMenu();
   });
 }
@@ -230,12 +204,7 @@ function setBudget() {
 // ================= BUDGET STATUS =================
 
 function showBudgetStatus() {
-
-  const totalSpent = appData.expenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0
-  );
-
+  const totalSpent = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
   const remaining = appData.budget - totalSpent;
 
   console.log("\n===== BUDGET STATUS =====");
@@ -245,6 +214,8 @@ function showBudgetStatus() {
 
   if (remaining < 0) {
     console.log("⚠ Budget exceeded!");
+  } else if (appData.budget === 0) {
+    console.log("No budget set yet.");
   } else {
     console.log("✅ You are within budget.");
   }
@@ -255,11 +226,9 @@ function showBudgetStatus() {
 // ================= EDIT EXPENSE =================
 
 function editExpense() {
-
   viewExpensesOnly();
 
   rl.question("Enter expense number to edit: ", (num) => {
-
     let index = num - 1;
 
     if (!appData.expenses[index]) {
@@ -269,11 +238,8 @@ function editExpense() {
     }
 
     rl.question("Enter new title: ", (newTitle) => {
-
       rl.question("Enter new amount: ", (newAmount) => {
-
         rl.question("Enter new category: ", (newCategory) => {
-
           const parsedAmount = parseFloat(newAmount);
 
           if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -284,13 +250,10 @@ function editExpense() {
 
           appData.expenses[index].title = newTitle.trim();
           appData.expenses[index].amount = parsedAmount;
-          appData.expenses[index].category =
-            newCategory.trim().toLowerCase();
+          appData.expenses[index].category = newCategory.trim().toLowerCase();
 
           saveData();
-
           console.log("✏ Expense updated");
-
           showMenu();
         });
       });
@@ -301,11 +264,9 @@ function editExpense() {
 // ================= DELETE EXPENSE =================
 
 function deleteExpense() {
-
   viewExpensesOnly();
 
   rl.question("Enter expense number to delete: ", (num) => {
-
     let index = num - 1;
 
     if (!appData.expenses[index]) {
@@ -314,13 +275,58 @@ function deleteExpense() {
       return;
     }
 
-    console.log(
-      `🗑 Deleted: ${appData.expenses[index].title}`
-    );
-
+    console.log(`🗑 Deleted: ${appData.expenses[index].title}`);
     appData.expenses.splice(index, 1);
 
     saveData();
+    showMenu();
+  });
+}
+
+// ================= SEARCH EXPENSE =================
+
+function searchExpense() {
+  rl.question("Enter keyword to search: ", (keyword) => {
+    const results = appData.expenses.filter((expense) =>
+      expense.title.toLowerCase().includes(keyword.toLowerCase()) ||
+      expense.category.toLowerCase().includes(keyword.toLowerCase())
+    );
+
+    console.log("\n===== SEARCH RESULTS =====");
+
+    if (results.length === 0) {
+      console.log("No matching expenses found.");
+    } else {
+      results.forEach((expense, index) => {
+        console.log(
+          `${index + 1}. ${expense.title} - ₹${expense.amount} | ${expense.category} | ${expense.date}`
+        );
+      });
+    }
+
+    showMenu();
+  });
+}
+
+// ================= FILTER EXPENSES =================
+
+function filterExpenses() {
+  rl.question("Filter by category: ", (category) => {
+    const filtered = appData.expenses.filter(
+      (expense) => expense.category.toLowerCase() === category.trim().toLowerCase()
+    );
+
+    console.log("\n===== FILTERED EXPENSES =====");
+
+    if (filtered.length === 0) {
+      console.log("No expenses found for this category.");
+    } else {
+      filtered.forEach((expense, index) => {
+        console.log(
+          `${index + 1}. ${expense.title} - ₹${expense.amount} | ${expense.category} | ${expense.date}`
+        );
+      });
+    }
 
     showMenu();
   });
@@ -329,7 +335,6 @@ function deleteExpense() {
 // ================= VIEW ONLY =================
 
 function viewExpensesOnly() {
-
   console.log("\n===== EXPENSE LIST =====");
 
   if (appData.expenses.length === 0) {
@@ -338,7 +343,6 @@ function viewExpensesOnly() {
   }
 
   appData.expenses.forEach((expense, index) => {
-
     console.log(
       `${index + 1}. ${expense.title} - ₹${expense.amount} | ${expense.category}`
     );
@@ -348,22 +352,10 @@ function viewExpensesOnly() {
 // ================= BUDGET ALERT =================
 
 function checkBudgetAlert() {
+  const totalSpent = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
-  const totalSpent = appData.expenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0
-  );
-
-  if (
-    appData.budget > 0 &&
-    totalSpent > appData.budget
-  ) {
-
-    console.log(
-      `⚠ Budget exceeded by ₹${(
-        totalSpent - appData.budget
-      ).toFixed(2)}`
-    );
+  if (appData.budget > 0 && totalSpent > appData.budget) {
+    console.log(`⚠ Budget exceeded by ₹${(totalSpent - appData.budget).toFixed(2)}`);
   }
 }
 
