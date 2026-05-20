@@ -49,7 +49,9 @@ function showMenu() {
   console.log("8. Delete Expense");
   console.log("9. Search Expense");
   console.log("10. Filter Expenses");
-  console.log("11. Exit");
+  console.log("11. View Financial Summary");
+  console.log("12. Export Report");
+  console.log("13. Exit");
 
   rl.question("Choose an option: ", handleMenu);
 }
@@ -89,6 +91,12 @@ function handleMenu(choice) {
       filterExpenses();
       break;
     case "11":
+      viewFinancialSummary();
+      break;
+    case "12":
+      exportReport();
+      break;
+    case "13":
       console.log("Exiting...");
       rl.close();
       break;
@@ -330,6 +338,88 @@ function filterExpenses() {
 
     showMenu();
   });
+}
+
+// ================= FINANCIAL SUMMARY =================
+
+function viewFinancialSummary() {
+  const totalSpent = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const remaining = appData.budget - totalSpent;
+  const highestExpense = appData.expenses.length
+    ? Math.max(...appData.expenses.map(expense => expense.amount))
+    : 0;
+
+  const categoryTotals = {};
+
+  appData.expenses.forEach((expense) => {
+    categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + expense.amount;
+  });
+
+  let topCategory = "N/A";
+  let topCategoryAmount = 0;
+
+  for (const category in categoryTotals) {
+    if (categoryTotals[category] > topCategoryAmount) {
+      topCategory = category;
+      topCategoryAmount = categoryTotals[category];
+    }
+  }
+
+  console.log("\n===== FINANCIAL SUMMARY =====");
+  console.log(`Budget: ₹${appData.budget.toFixed(2)}`);
+  console.log(`Total Spent: ₹${totalSpent.toFixed(2)}`);
+  console.log(`Remaining: ₹${remaining.toFixed(2)}`);
+  console.log(`Highest Expense: ₹${highestExpense.toFixed(2)}`);
+  console.log(`Top Spending Category: ${topCategory} (₹${topCategoryAmount.toFixed(2)})`);
+
+  showMenu();
+}
+
+// ================= EXPORT REPORT =================
+
+function exportReport() {
+  const totalSpent = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const remaining = appData.budget - totalSpent;
+  const highestExpense = appData.expenses.length
+    ? Math.max(...appData.expenses.map(expense => expense.amount))
+    : 0;
+
+  const categoryTotals = {};
+
+  appData.expenses.forEach((expense) => {
+    categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + expense.amount;
+  });
+
+  let topCategory = "N/A";
+  let topCategoryAmount = 0;
+
+  for (const category in categoryTotals) {
+    if (categoryTotals[category] > topCategoryAmount) {
+      topCategory = category;
+      topCategoryAmount = categoryTotals[category];
+    }
+  }
+
+  const report = `
+===== SMART EXPENSE TRACKER REPORT =====
+
+Date: ${new Date().toDateString()}
+
+Budget: ₹${appData.budget.toFixed(2)}
+Total Spent: ₹${totalSpent.toFixed(2)}
+Remaining: ₹${remaining.toFixed(2)}
+Highest Expense: ₹${highestExpense.toFixed(2)}
+Top Spending Category: ${topCategory} (₹${topCategoryAmount.toFixed(2)})
+
+Expenses:
+${appData.expenses.map(expense =>
+`- ${expense.title} | ₹${expense.amount.toFixed(2)} | ${expense.category} | ${expense.date}`
+).join("\n")}
+`;
+
+  fs.writeFileSync("expense-report.txt", report.trim());
+  console.log("📄 Report exported as expense-report.txt");
+  showMenu();
 }
 
 // ================= VIEW ONLY =================
