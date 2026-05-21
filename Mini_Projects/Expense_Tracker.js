@@ -6,28 +6,55 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
-const FILE = "expenses.json";
-
-// ================= LOAD DATA =================
+const FILE = "finances.json";
 
 function loadData() {
   if (!fs.existsSync(FILE)) {
-    return { budget: 0, expenses: [] };
+    return { budget: 0, transactions: [] };
   }
 
-  const data = JSON.parse(fs.readFileSync(FILE, "utf-8"));
+  const raw = JSON.parse(fs.readFileSync(FILE, "utf-8"));
 
-  if (Array.isArray(data)) {
-    return { budget: 0, expenses: data };
+  if (Array.isArray(raw)) {
+    return {
+      budget: 0,
+      transactions: raw.map((item) => ({
+        id: item.id || Date.now(),
+        type: item.type || "expense",
+        title: item.title || "Untitled",
+        amount: Number(item.amount) || 0,
+        category: item.category || "other",
+        date: item.date || new Date().toLocaleString()
+      }))
+    };
+  }
+
+  if (raw.expenses && !raw.transactions) {
+    return {
+      budget: raw.budget || 0,
+      transactions: raw.expenses.map((item) => ({
+        id: item.id || Date.now(),
+        type: "expense",
+        title: item.title || "Untitled",
+        amount: Number(item.amount) || 0,
+        category: item.category || "other",
+        date: item.date || new Date().toLocaleString()
+      }))
+    };
   }
 
   return {
-    budget: data.budget || 0,
-    expenses: data.expenses || []
+    budget: raw.budget || 0,
+    transactions: (raw.transactions || []).map((item) => ({
+      id: item.id || Date.now(),
+      type: item.type || "expense",
+      title: item.title || "Untitled",
+      amount: Number(item.amount) || 0,
+      category: item.category || "other",
+      date: item.date || new Date().toLocaleString()
+    }))
   };
 }
-
-// ================= SAVE DATA =================
 
 function saveData() {
   fs.writeFileSync(FILE, JSON.stringify(appData, null, 2));
@@ -35,68 +62,92 @@ function saveData() {
 
 let appData = loadData();
 
-// ================= MENU =================
+function getExpenseTotal() {
+  return appData.transactions
+    .filter((t) => t.type === "expense")
+    .reduce((sum, t) => sum + t.amount, 0);
+}
+
+function getIncomeTotal() {
+  return appData.transactions
+    .filter((t) => t.type === "income")
+    .reduce((sum, t) => sum + t.amount, 0);
+}
+
+function getBalance() {
+  return getIncomeTotal() - getExpenseTotal();
+}
 
 function showMenu() {
-  console.log("\n===== SMART EXPENSE TRACKER =====");
+  console.log("\n===== SMART FINANCE TRACKER =====");
   console.log("1. Add Expense");
-  console.log("2. View Expenses");
-  console.log("3. Show Total Spent");
-  console.log("4. Show Category Summary");
-  console.log("5. Set Monthly Budget");
-  console.log("6. Show Budget Status");
-  console.log("7. Edit Expense");
-  console.log("8. Delete Expense");
-  console.log("9. Search Expense");
-  console.log("10. Filter Expenses");
-  console.log("11. View Financial Summary");
-  console.log("12. Export Report");
-  console.log("13. Exit");
+  console.log("2. Add Income");
+  console.log("3. View Transactions");
+  console.log("4. Show Total Expense");
+  console.log("5. Show Total Income");
+  console.log("6. Show Balance");
+  console.log("7. Show Category Summary");
+  console.log("8. Set Monthly Budget");
+  console.log("9. Show Budget Status");
+  console.log("10. Edit Transaction");
+  console.log("11. Delete Transaction");
+  console.log("12. Search Transaction");
+  console.log("13. Filter Transactions");
+  console.log("14. View Financial Summary");
+  console.log("15. Export Report");
+  console.log("16. Exit");
 
   rl.question("Choose an option: ", handleMenu);
 }
 
-// ================= HANDLE MENU =================
-
 function handleMenu(choice) {
   switch (choice) {
     case "1":
-      addExpense();
+      addTransaction("expense");
       break;
     case "2":
-      viewExpenses();
+      addTransaction("income");
       break;
     case "3":
-      showTotalSpent();
+      viewTransactions();
       break;
     case "4":
-      showCategorySummary();
+      showTotalExpense();
       break;
     case "5":
-      setBudget();
+      showTotalIncome();
       break;
     case "6":
-      showBudgetStatus();
+      showBalance();
       break;
     case "7":
-      editExpense();
+      showCategorySummary();
       break;
     case "8":
-      deleteExpense();
+      setBudget();
       break;
     case "9":
-      searchExpense();
+      showBudgetStatus();
       break;
     case "10":
-      filterExpenses();
+      editTransaction();
       break;
     case "11":
-      viewFinancialSummary();
+      deleteTransaction();
       break;
     case "12":
-      exportReport();
+      searchTransaction();
       break;
     case "13":
+      filterTransactions();
+      break;
+    case "14":
+      viewFinancialSummary();
+      break;
+    case "15":
+      exportReport();
+      break;
+    case "16":
       console.log("Exiting...");
       rl.close();
       break;
@@ -106,12 +157,10 @@ function handleMenu(choice) {
   }
 }
 
-// ================= ADD EXPENSE =================
-
-function addExpense() {
-  rl.question("Enter expense title: ", (title) => {
+function addTransaction(type) {
+  rl.question(`Enter ${type} title: ", (title) => {
     rl.question("Enter amount: ", (amount) => {
-      rl.question("Enter category (food/travel/study/shopping/other): ", (category) => {
+      rl.question("Enter category (food/travel/study/shopping/other/salary/freelance): ", (category) => {
         const parsedAmount = parseFloat(amount);
 
         if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -120,8 +169,9 @@ function addExpense() {
           return;
         }
 
-        appData.expenses.push({
+        appData.transactions.push({
           id: Date.now(),
+          type,
           title: title.trim(),
           amount: parsedAmount,
           category: category.trim().toLowerCase(),
@@ -129,7 +179,8 @@ function addExpense() {
         });
 
         saveData();
-        console.log("✅ Expense added");
+        console.log(`✅ ${type === "income" ? "Income" : "Expense"} added`);
+
         checkBudgetAlert();
         showMenu();
       });
@@ -137,17 +188,15 @@ function addExpense() {
   });
 }
 
-// ================= VIEW EXPENSES =================
+function viewTransactions() {
+  console.log("\n===== TRANSACTION LIST =====");
 
-function viewExpenses() {
-  console.log("\n===== EXPENSE LIST =====");
-
-  if (appData.expenses.length === 0) {
-    console.log("No expenses added yet.");
+  if (appData.transactions.length === 0) {
+    console.log("No transactions added yet.");
   } else {
-    appData.expenses.forEach((expense, index) => {
+    appData.transactions.forEach((transaction, index) => {
       console.log(
-        `${index + 1}. ${expense.title} - ₹${expense.amount} | ${expense.category} | ${expense.date}`
+        `${index + 1}. [${transaction.type.toUpperCase()}] ${transaction.title} - ₹${transaction.amount} | ${transaction.category} | ${transaction.date}`
       );
     });
   }
@@ -155,41 +204,45 @@ function viewExpenses() {
   showMenu();
 }
 
-// ================= TOTAL SPENT =================
-
-function showTotalSpent() {
-  const total = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  console.log(`\n💰 Total Spent: ₹${total.toFixed(2)}`);
+function showTotalExpense() {
+  console.log(`\n💸 Total Expense: ₹${getExpenseTotal().toFixed(2)}`);
   showMenu();
 }
 
-// ================= CATEGORY SUMMARY =================
+function showTotalIncome() {
+  console.log(`\n💰 Total Income: ₹${getIncomeTotal().toFixed(2)}`);
+  showMenu();
+}
+
+function showBalance() {
+  console.log(`\n📊 Net Balance: ₹${getBalance().toFixed(2)}`);
+  showMenu();
+}
 
 function showCategorySummary() {
-  if (appData.expenses.length === 0) {
-    console.log("\nNo expenses available.");
+  if (appData.transactions.length === 0) {
+    console.log("\nNo transactions available.");
     showMenu();
     return;
   }
 
   const summary = {};
 
-  appData.expenses.forEach((expense) => {
-    if (!summary[expense.category]) {
-      summary[expense.category] = 0;
-    }
-    summary[expense.category] += expense.amount;
+  appData.transactions.forEach((transaction) => {
+    const key = `${transaction.type}:${transaction.category}`;
+    if (!summary[key]) summary[key] = 0;
+    summary[key] += transaction.amount;
   });
 
   console.log("\n===== CATEGORY SUMMARY =====");
-  for (const category in summary) {
-    console.log(`${category}: ₹${summary[category].toFixed(2)}`);
-  }
+
+  Object.keys(summary).forEach((key) => {
+    const [type, category] = key.split(":");
+    console.log(`${type.toUpperCase()} | ${category}: ₹${summary[key].toFixed(2)}`);
+  });
 
   showMenu();
 }
-
-// ================= SET BUDGET =================
 
 function setBudget() {
   rl.question("Enter monthly budget: ", (budget) => {
@@ -209,21 +262,19 @@ function setBudget() {
   });
 }
 
-// ================= BUDGET STATUS =================
-
 function showBudgetStatus() {
-  const totalSpent = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const remaining = appData.budget - totalSpent;
+  const spent = getExpenseTotal();
+  const remaining = appData.budget - spent;
 
   console.log("\n===== BUDGET STATUS =====");
   console.log(`Budget: ₹${appData.budget.toFixed(2)}`);
-  console.log(`Spent: ₹${totalSpent.toFixed(2)}`);
+  console.log(`Spent: ₹${spent.toFixed(2)}`);
   console.log(`Remaining: ₹${remaining.toFixed(2)}`);
 
-  if (remaining < 0) {
-    console.log("⚠ Budget exceeded!");
-  } else if (appData.budget === 0) {
+  if (appData.budget === 0) {
     console.log("No budget set yet.");
+  } else if (remaining < 0) {
+    console.log("⚠ Budget exceeded!");
   } else {
     console.log("✅ You are within budget.");
   }
@@ -231,16 +282,14 @@ function showBudgetStatus() {
   showMenu();
 }
 
-// ================= EDIT EXPENSE =================
+function editTransaction() {
+  viewTransactionsOnly();
 
-function editExpense() {
-  viewExpensesOnly();
+  rl.question("Enter transaction number to edit: ", (num) => {
+    const index = parseInt(num) - 1;
 
-  rl.question("Enter expense number to edit: ", (num) => {
-    let index = num - 1;
-
-    if (!appData.expenses[index]) {
-      console.log("Invalid expense number");
+    if (!appData.transactions[index]) {
+      console.log("Invalid transaction number");
       showMenu();
       return;
     }
@@ -248,66 +297,72 @@ function editExpense() {
     rl.question("Enter new title: ", (newTitle) => {
       rl.question("Enter new amount: ", (newAmount) => {
         rl.question("Enter new category: ", (newCategory) => {
-          const parsedAmount = parseFloat(newAmount);
+          rl.question("Enter new type (income/expense): ", (newType) => {
+            const parsedAmount = parseFloat(newAmount);
+            const type = newType.trim().toLowerCase();
 
-          if (isNaN(parsedAmount) || parsedAmount <= 0) {
-            console.log("Invalid amount");
+            if (isNaN(parsedAmount) || parsedAmount <= 0) {
+              console.log("Invalid amount");
+              showMenu();
+              return;
+            }
+
+            if (type !== "income" && type !== "expense") {
+              console.log("Invalid type");
+              showMenu();
+              return;
+            }
+
+            appData.transactions[index].title = newTitle.trim();
+            appData.transactions[index].amount = parsedAmount;
+            appData.transactions[index].category = newCategory.trim().toLowerCase();
+            appData.transactions[index].type = type;
+
+            saveData();
+            console.log("✏ Transaction updated");
             showMenu();
-            return;
-          }
-
-          appData.expenses[index].title = newTitle.trim();
-          appData.expenses[index].amount = parsedAmount;
-          appData.expenses[index].category = newCategory.trim().toLowerCase();
-
-          saveData();
-          console.log("✏ Expense updated");
-          showMenu();
+          });
         });
       });
     });
   });
 }
 
-// ================= DELETE EXPENSE =================
+function deleteTransaction() {
+  viewTransactionsOnly();
 
-function deleteExpense() {
-  viewExpensesOnly();
+  rl.question("Enter transaction number to delete: ", (num) => {
+    const index = parseInt(num) - 1;
 
-  rl.question("Enter expense number to delete: ", (num) => {
-    let index = num - 1;
-
-    if (!appData.expenses[index]) {
-      console.log("Invalid expense number");
+    if (!appData.transactions[index]) {
+      console.log("Invalid transaction number");
       showMenu();
       return;
     }
 
-    console.log(`🗑 Deleted: ${appData.expenses[index].title}`);
-    appData.expenses.splice(index, 1);
-
+    console.log(`🗑 Deleted: ${appData.transactions[index].title}`);
+    appData.transactions.splice(index, 1);
     saveData();
     showMenu();
   });
 }
 
-// ================= SEARCH EXPENSE =================
-
-function searchExpense() {
+function searchTransaction() {
   rl.question("Enter keyword to search: ", (keyword) => {
-    const results = appData.expenses.filter((expense) =>
-      expense.title.toLowerCase().includes(keyword.toLowerCase()) ||
-      expense.category.toLowerCase().includes(keyword.toLowerCase())
+    const results = appData.transactions.filter((transaction) =>
+      transaction.title.toLowerCase().includes(keyword.toLowerCase()) ||
+      transaction.category.toLowerCase().includes(keyword.toLowerCase()) ||
+      transaction.type.toLowerCase().includes(keyword.toLowerCase())
     );
 
     console.log("\n===== SEARCH RESULTS =====");
 
     if (results.length === 0) {
-      console.log("No matching expenses found.");
+      console.log("No matching transactions found.");
     } else {
-      results.forEach((expense, index) => {
+      results.forEach((transaction, index) => {
         console.log(
-          `${index + 1}. ${expense.title} - ₹${expense.amount} | ${expense.category} | ${expense.date}`
+          `${index + 1}. [${transaction.type.toUpperCase()}] ${transaction.title} - ₹${transaction.amount} | ${transaction.category} | ${transaction.date}`
         );
       });
     }
@@ -316,22 +371,23 @@ function searchExpense() {
   });
 }
 
-// ================= FILTER EXPENSES =================
+function filterTransactions() {
+  rl.question("Filter by type (income/expense/all): ", (type) => {
+    const cleanType = type.trim().toLowerCase();
 
-function filterExpenses() {
-  rl.question("Filter by category: ", (category) => {
-    const filtered = appData.expenses.filter(
-      (expense) => expense.category.toLowerCase() === category.trim().toLowerCase()
-    );
+    const filtered =
+      cleanType === "all"
+        ? appData.transactions
+        : appData.transactions.filter((transaction) => transaction.type === cleanType);
 
-    console.log("\n===== FILTERED EXPENSES =====");
+    console.log("\n===== FILTERED TRANSACTIONS =====");
 
     if (filtered.length === 0) {
-      console.log("No expenses found for this category.");
+      console.log("No transactions found.");
     } else {
-      filtered.forEach((expense, index) => {
+      filtered.forEach((transaction, index) => {
         console.log(
-          `${index + 1}. ${expense.title} - ₹${expense.amount} | ${expense.category} | ${expense.date}`
+          `${index + 1}. [${transaction.type.toUpperCase()}] ${transaction.title} - ₹${transaction.amount} | ${transaction.category} | ${transaction.date}`
         );
       });
     }
@@ -340,115 +396,91 @@ function filterExpenses() {
   });
 }
 
-// ================= FINANCIAL SUMMARY =================
-
 function viewFinancialSummary() {
-  const totalSpent = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const remaining = appData.budget - totalSpent;
-  const highestExpense = appData.expenses.length
-    ? Math.max(...appData.expenses.map(expense => expense.amount))
-    : 0;
+  const income = getIncomeTotal();
+  const expense = getExpenseTotal();
+  const balance = getBalance();
+  const highestExpense = appData.transactions
+    .filter((t) => t.type === "expense")
+    .reduce((max, t) => Math.max(max, t.amount), 0);
 
   const categoryTotals = {};
 
-  appData.expenses.forEach((expense) => {
-    categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + expense.amount;
+  appData.transactions.forEach((transaction) => {
+    const key = `${transaction.type}:${transaction.category}`;
+    categoryTotals[key] = (categoryTotals[key] || 0) + transaction.amount;
   });
 
   let topCategory = "N/A";
   let topCategoryAmount = 0;
 
-  for (const category in categoryTotals) {
-    if (categoryTotals[category] > topCategoryAmount) {
-      topCategory = category;
-      topCategoryAmount = categoryTotals[category];
+  for (const key in categoryTotals) {
+    if (categoryTotals[key] > topCategoryAmount) {
+      topCategory = key;
+      topCategoryAmount = categoryTotals[key];
     }
   }
 
   console.log("\n===== FINANCIAL SUMMARY =====");
   console.log(`Budget: ₹${appData.budget.toFixed(2)}`);
-  console.log(`Total Spent: ₹${totalSpent.toFixed(2)}`);
-  console.log(`Remaining: ₹${remaining.toFixed(2)}`);
+  console.log(`Total Income: ₹${income.toFixed(2)}`);
+  console.log(`Total Expense: ₹${expense.toFixed(2)}`);
+  console.log(`Net Balance: ₹${balance.toFixed(2)}`);
   console.log(`Highest Expense: ₹${highestExpense.toFixed(2)}`);
-  console.log(`Top Spending Category: ${topCategory} (₹${topCategoryAmount.toFixed(2)})`);
+  console.log(`Top Category: ${topCategory} (₹${topCategoryAmount.toFixed(2)})`);
 
   showMenu();
 }
 
-// ================= EXPORT REPORT =================
-
 function exportReport() {
-  const totalSpent = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const remaining = appData.budget - totalSpent;
-  const highestExpense = appData.expenses.length
-    ? Math.max(...appData.expenses.map(expense => expense.amount))
-    : 0;
-
-  const categoryTotals = {};
-
-  appData.expenses.forEach((expense) => {
-    categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + expense.amount;
-  });
-
-  let topCategory = "N/A";
-  let topCategoryAmount = 0;
-
-  for (const category in categoryTotals) {
-    if (categoryTotals[category] > topCategoryAmount) {
-      topCategory = category;
-      topCategoryAmount = categoryTotals[category];
-    }
-  }
+  const income = getIncomeTotal();
+  const expense = getExpenseTotal();
+  const balance = getBalance();
+  const remaining = appData.budget - expense;
 
   const report = `
-===== SMART EXPENSE TRACKER REPORT =====
+===== SMART FINANCE TRACKER REPORT =====
 
 Date: ${new Date().toDateString()}
 
 Budget: ₹${appData.budget.toFixed(2)}
-Total Spent: ₹${totalSpent.toFixed(2)}
-Remaining: ₹${remaining.toFixed(2)}
-Highest Expense: ₹${highestExpense.toFixed(2)}
-Top Spending Category: ${topCategory} (₹${topCategoryAmount.toFixed(2)})
+Total Income: ₹${income.toFixed(2)}
+Total Expense: ₹${expense.toFixed(2)}
+Net Balance: ₹${balance.toFixed(2)}
+Remaining Budget: ₹${remaining.toFixed(2)}
 
-Expenses:
-${appData.expenses.map(expense =>
-`- ${expense.title} | ₹${expense.amount.toFixed(2)} | ${expense.category} | ${expense.date}`
+Transactions:
+${appData.transactions.map((transaction) =>
+`- [${transaction.type.toUpperCase()}] ${transaction.title} | ₹${transaction.amount.toFixed(2)} | ${transaction.category} | ${transaction.date}`
 ).join("\n")}
 `;
 
-  fs.writeFileSync("expense-report.txt", report.trim());
-  console.log("📄 Report exported as expense-report.txt");
+  fs.writeFileSync("finance-report.txt", report.trim());
+  console.log("📄 Report exported as finance-report.txt");
   showMenu();
 }
 
-// ================= VIEW ONLY =================
+function viewTransactionsOnly() {
+  console.log("\n===== TRANSACTION LIST =====");
 
-function viewExpensesOnly() {
-  console.log("\n===== EXPENSE LIST =====");
-
-  if (appData.expenses.length === 0) {
-    console.log("No expenses added yet.");
+  if (appData.transactions.length === 0) {
+    console.log("No transactions added yet.");
     return;
   }
 
-  appData.expenses.forEach((expense, index) => {
+  appData.transactions.forEach((transaction, index) => {
     console.log(
-      `${index + 1}. ${expense.title} - ₹${expense.amount} | ${expense.category}`
+      `${index + 1}. [${transaction.type.toUpperCase()}] ${transaction.title} - ₹${transaction.amount} | ${transaction.category}`
     );
   });
 }
 
-// ================= BUDGET ALERT =================
-
 function checkBudgetAlert() {
-  const totalSpent = appData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const expense = getExpenseTotal();
 
-  if (appData.budget > 0 && totalSpent > appData.budget) {
-    console.log(`⚠ Budget exceeded by ₹${(totalSpent - appData.budget).toFixed(2)}`);
+  if (appData.budget > 0 && expense > appData.budget) {
+    console.log(`⚠ Budget exceeded by ₹${(expense - appData.budget).toFixed(2)}`);
   }
 }
-
-// ================= START =================
 
 showMenu();
