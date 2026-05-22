@@ -8,6 +8,8 @@ const rl = readline.createInterface({
 
 const FILE = "finances.json";
 
+// ================= LOAD & SAVE =================
+
 function loadData() {
   if (!fs.existsSync(FILE)) {
     return { budget: 0, transactions: [] };
@@ -21,20 +23,6 @@ function loadData() {
       transactions: raw.map((item) => ({
         id: item.id || Date.now(),
         type: item.type || "expense",
-        title: item.title || "Untitled",
-        amount: Number(item.amount) || 0,
-        category: item.category || "other",
-        date: item.date || new Date().toLocaleString()
-      }))
-    };
-  }
-
-  if (raw.expenses && !raw.transactions) {
-    return {
-      budget: raw.budget || 0,
-      transactions: raw.expenses.map((item) => ({
-        id: item.id || Date.now(),
-        type: "expense",
         title: item.title || "Untitled",
         amount: Number(item.amount) || 0,
         category: item.category || "other",
@@ -62,6 +50,8 @@ function saveData() {
 
 let appData = loadData();
 
+// ================= HELPERS =================
+
 function getExpenseTotal() {
   return appData.transactions
     .filter((t) => t.type === "expense")
@@ -77,6 +67,31 @@ function getIncomeTotal() {
 function getBalance() {
   return getIncomeTotal() - getExpenseTotal();
 }
+
+function checkBudgetAlert() {
+  const expense = getExpenseTotal();
+
+  if (appData.budget > 0 && expense > appData.budget) {
+    console.log(`⚠ Budget exceeded by ₹${(expense - appData.budget).toFixed(2)}`);
+  }
+}
+
+function viewTransactionsOnly() {
+  console.log("\n===== TRANSACTION LIST =====");
+
+  if (appData.transactions.length === 0) {
+    console.log("No transactions added yet.");
+    return;
+  }
+
+  appData.transactions.forEach((transaction, index) => {
+    console.log(
+      `${index + 1}. [${transaction.type.toUpperCase()}] ${transaction.title} - ₹${transaction.amount} | ${transaction.category} | ${transaction.date}`
+    );
+  });
+}
+
+// ================= MENU =================
 
 function showMenu() {
   console.log("\n===== SMART FINANCE TRACKER =====");
@@ -94,8 +109,9 @@ function showMenu() {
   console.log("12. Search Transaction");
   console.log("13. Filter Transactions");
   console.log("14. View Financial Summary");
-  console.log("15. Export Report");
-  console.log("16. Exit");
+  console.log("15. View Monthly Dashboard");
+  console.log("16. Export Report");
+  console.log("17. Exit");
 
   rl.question("Choose an option: ", handleMenu);
 }
@@ -145,9 +161,12 @@ function handleMenu(choice) {
       viewFinancialSummary();
       break;
     case "15":
-      exportReport();
+      viewMonthlyDashboard();
       break;
     case "16":
+      exportReport();
+      break;
+    case "17":
       console.log("Exiting...");
       rl.close();
       break;
@@ -157,36 +176,42 @@ function handleMenu(choice) {
   }
 }
 
+// ================= ADD TRANSACTION =================
+
 function addTransaction(type) {
-  rl.question(`Enter ${type} title: ", (title) => {
+  rl.question(`Enter ${type} title: `, (title) => {
     rl.question("Enter amount: ", (amount) => {
-      rl.question("Enter category (food/travel/study/shopping/other/salary/freelance): ", (category) => {
-        const parsedAmount = parseFloat(amount);
+      rl.question(
+        "Enter category (food/travel/study/shopping/other/salary/freelance): ",
+        (category) => {
+          const parsedAmount = parseFloat(amount);
 
-        if (isNaN(parsedAmount) || parsedAmount <= 0) {
-          console.log("Please enter a valid amount.");
+          if (isNaN(parsedAmount) || parsedAmount <= 0) {
+            console.log("Please enter a valid amount.");
+            showMenu();
+            return;
+          }
+
+          appData.transactions.push({
+            id: Date.now(),
+            type,
+            title: title.trim(),
+            amount: parsedAmount,
+            category: category.trim().toLowerCase(),
+            date: new Date().toLocaleString()
+          });
+
+          saveData();
+          console.log(`✅ ${type === "income" ? "Income" : "Expense"} added`);
+          checkBudgetAlert();
           showMenu();
-          return;
         }
-
-        appData.transactions.push({
-          id: Date.now(),
-          type,
-          title: title.trim(),
-          amount: parsedAmount,
-          category: category.trim().toLowerCase(),
-          date: new Date().toLocaleString()
-        });
-
-        saveData();
-        console.log(`✅ ${type === "income" ? "Income" : "Expense"} added`);
-
-        checkBudgetAlert();
-        showMenu();
-      });
+      );
     });
   });
 }
+
+// ================= VIEW TRANSACTIONS =================
 
 function viewTransactions() {
   console.log("\n===== TRANSACTION LIST =====");
@@ -204,6 +229,8 @@ function viewTransactions() {
   showMenu();
 }
 
+// ================= TOTALS =================
+
 function showTotalExpense() {
   console.log(`\n💸 Total Expense: ₹${getExpenseTotal().toFixed(2)}`);
   showMenu();
@@ -219,6 +246,8 @@ function showBalance() {
   showMenu();
 }
 
+// ================= CATEGORY SUMMARY =================
+
 function showCategorySummary() {
   if (appData.transactions.length === 0) {
     console.log("\nNo transactions available.");
@@ -230,12 +259,10 @@ function showCategorySummary() {
 
   appData.transactions.forEach((transaction) => {
     const key = `${transaction.type}:${transaction.category}`;
-    if (!summary[key]) summary[key] = 0;
-    summary[key] += transaction.amount;
+    summary[key] = (summary[key] || 0) + transaction.amount;
   });
 
   console.log("\n===== CATEGORY SUMMARY =====");
-
   Object.keys(summary).forEach((key) => {
     const [type, category] = key.split(":");
     console.log(`${type.toUpperCase()} | ${category}: ₹${summary[key].toFixed(2)}`);
@@ -243,6 +270,8 @@ function showCategorySummary() {
 
   showMenu();
 }
+
+// ================= BUDGET =================
 
 function setBudget() {
   rl.question("Enter monthly budget: ", (budget) => {
@@ -281,6 +310,8 @@ function showBudgetStatus() {
 
   showMenu();
 }
+
+// ================= EDIT =================
 
 function editTransaction() {
   viewTransactionsOnly();
@@ -328,6 +359,8 @@ function editTransaction() {
   });
 }
 
+// ================= DELETE =================
+
 function deleteTransaction() {
   viewTransactionsOnly();
 
@@ -346,6 +379,8 @@ function deleteTransaction() {
     showMenu();
   });
 }
+
+// ================= SEARCH =================
 
 function searchTransaction() {
   rl.question("Enter keyword to search: ", (keyword) => {
@@ -370,6 +405,8 @@ function searchTransaction() {
     showMenu();
   });
 }
+
+// ================= FILTER =================
 
 function filterTransactions() {
   rl.question("Filter by type (income/expense/all): ", (type) => {
@@ -396,6 +433,8 @@ function filterTransactions() {
   });
 }
 
+// ================= SUMMARY =================
+
 function viewFinancialSummary() {
   const income = getIncomeTotal();
   const expense = getExpenseTotal();
@@ -405,7 +444,6 @@ function viewFinancialSummary() {
     .reduce((max, t) => Math.max(max, t.amount), 0);
 
   const categoryTotals = {};
-
   appData.transactions.forEach((transaction) => {
     const key = `${transaction.type}:${transaction.category}`;
     categoryTotals[key] = (categoryTotals[key] || 0) + transaction.amount;
@@ -431,6 +469,55 @@ function viewFinancialSummary() {
 
   showMenu();
 }
+
+// ================= MONTHLY DASHBOARD =================
+
+function viewMonthlyDashboard() {
+  if (appData.transactions.length === 0) {
+    console.log("\nNo transactions available.");
+    showMenu();
+    return;
+  }
+
+  const monthMap = {};
+
+  appData.transactions.forEach((transaction) => {
+    const date = new Date(transaction.date);
+    const monthKey = `${date.getMonth() + 1}-${date.getFullYear()}`;
+
+    if (!monthMap[monthKey]) {
+      monthMap[monthKey] = {
+        income: 0,
+        expense: 0,
+        count: 0
+      };
+    }
+
+    if (transaction.type === "income") {
+      monthMap[monthKey].income += transaction.amount;
+    } else {
+      monthMap[monthKey].expense += transaction.amount;
+    }
+
+    monthMap[monthKey].count += 1;
+  });
+
+  console.log("\n===== MONTHLY DASHBOARD =====");
+
+  Object.keys(monthMap)
+    .sort()
+    .forEach((monthKey) => {
+      const data = monthMap[monthKey];
+      const net = data.income - data.expense;
+      console.log(
+        `${monthKey} | Income: ₹${data.income.toFixed(2)} | Expense: ₹${data.expense.toFixed(2)} | Net: ₹${net.toFixed(2)} | Transactions: ${data.count}`
+      );
+    });
+
+  showMenu();
+}
+
+// ================= EXPORT REPORT =================
 
 function exportReport() {
   const income = getIncomeTotal();
@@ -460,27 +547,6 @@ ${appData.transactions.map((transaction) =>
   showMenu();
 }
 
-function viewTransactionsOnly() {
-  console.log("\n===== TRANSACTION LIST =====");
-
-  if (appData.transactions.length === 0) {
-    console.log("No transactions added yet.");
-    return;
-  }
-
-  appData.transactions.forEach((transaction, index) => {
-    console.log(
-      `${index + 1}. [${transaction.type.toUpperCase()}] ${transaction.title} - ₹${transaction.amount} | ${transaction.category}`
-    );
-  });
-}
-
-function checkBudgetAlert() {
-  const expense = getExpenseTotal();
-
-  if (appData.budget > 0 && expense > appData.budget) {
-    console.log(`⚠ Budget exceeded by ₹${(expense - appData.budget).toFixed(2)}`);
-  }
-}
+// ================= START =================
 
 showMenu();
