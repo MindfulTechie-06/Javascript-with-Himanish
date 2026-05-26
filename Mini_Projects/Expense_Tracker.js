@@ -110,8 +110,10 @@ function showMenu() {
   console.log("13. Filter Transactions");
   console.log("14. View Financial Summary");
   console.log("15. View Monthly Dashboard");
-  console.log("16. Export Report");
-  console.log("17. Exit");
+  console.log("16. Export TXT Report");
+  console.log("17. Export CSV Report");
+  console.log("18. Backup Data");
+  console.log("19. Exit");
 
   rl.question("Choose an option: ", handleMenu);
 }
@@ -164,9 +166,15 @@ function handleMenu(choice) {
       viewMonthlyDashboard();
       break;
     case "16":
-      exportReport();
+      exportTxtReport();
       break;
     case "17":
+      exportCsvReport();
+      break;
+    case "18":
+      backupData();
+      break;
+    case "19":
       console.log("Exiting...");
       rl.close();
       break;
@@ -517,9 +525,9 @@ function viewMonthlyDashboard() {
   showMenu();
 }
 
-// ================= EXPORT REPORT =================
+// ================= REPORT EXPORT =================
 
-function exportReport() {
+function exportTxtReport() {
   const income = getIncomeTotal();
   const expense = getExpenseTotal();
   const balance = getBalance();
@@ -544,6 +552,28 @@ ${appData.transactions.map((transaction) =>
 
   fs.writeFileSync("finance-report.txt", report.trim());
   console.log("📄 Report exported as finance-report.txt");
+  showMenu();
+}
+
+function exportCsvReport() {
+  const header = "Type,Title,Amount,Category,Date\n";
+  const rows = appData.transactions.map((transaction) => {
+    const safeTitle = `"${String(transaction.title).replaceAll('"', '""')}"`;
+    const safeCategory = `"${String(transaction.category).replaceAll('"', '""')}"`;
+    const safeDate = `"${String(transaction.date).replaceAll('"', '""')}"`;
+    return `${transaction.type},${safeTitle},${transaction.amount.toFixed(2)},${safeCategory},${safeDate}`;
+  });
+
+  const csv = header + rows.join("\n");
+  fs.writeFileSync("finance-report.csv", csv);
+  console.log("📄 Report exported as finance-report.csv");
+  showMenu();
+}
+
+function backupData() {
+  const backupName = `finances-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  fs.writeFileSync(backupName, JSON.stringify(appData, null, 2));
+  console.log(`💾 Backup created: ${backupName}`);
   showMenu();
 }
 
