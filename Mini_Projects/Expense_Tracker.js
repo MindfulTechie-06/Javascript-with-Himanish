@@ -91,6 +91,32 @@ function viewTransactionsOnly() {
   });
 }
 
+function getCategorySummaryMap() {
+  const summary = {};
+
+  appData.transactions.forEach((transaction) => {
+    const key = `${transaction.type}:${transaction.category}`;
+    summary[key] = (summary[key] || 0) + transaction.amount;
+  });
+
+  return summary;
+}
+
+function getTopCategory() {
+  const summary = getCategorySummaryMap();
+  let topCategory = "N/A";
+  let topCategoryAmount = 0;
+
+  for (const key in summary) {
+    if (summary[key] > topCategoryAmount) {
+      topCategory = key;
+      topCategoryAmount = summary[key];
+    }
+  }
+
+  return { topCategory, topCategoryAmount };
+}
+
 // ================= MENU =================
 
 function showMenu() {
@@ -113,7 +139,9 @@ function showMenu() {
   console.log("16. Export TXT Report");
   console.log("17. Export CSV Report");
   console.log("18. Backup Data");
-  console.log("19. Exit");
+  console.log("19. Reset All Data");
+  console.log("20. Help");
+  console.log("21. Exit");
 
   rl.question("Choose an option: ", handleMenu);
 }
@@ -175,6 +203,12 @@ function handleMenu(choice) {
       backupData();
       break;
     case "19":
+      resetAllData();
+      break;
+    case "20":
+      showHelp();
+      break;
+    case "21":
       console.log("Exiting...");
       rl.close();
       break;
@@ -263,12 +297,7 @@ function showCategorySummary() {
     return;
   }
 
-  const summary = {};
-
-  appData.transactions.forEach((transaction) => {
-    const key = `${transaction.type}:${transaction.category}`;
-    summary[key] = (summary[key] || 0) + transaction.amount;
-  });
+  const summary = getCategorySummaryMap();
 
   console.log("\n===== CATEGORY SUMMARY =====");
   Object.keys(summary).forEach((key) => {
@@ -451,21 +480,7 @@ function viewFinancialSummary() {
     .filter((t) => t.type === "expense")
     .reduce((max, t) => Math.max(max, t.amount), 0);
 
-  const categoryTotals = {};
-  appData.transactions.forEach((transaction) => {
-    const key = `${transaction.type}:${transaction.category}`;
-    categoryTotals[key] = (categoryTotals[key] || 0) + transaction.amount;
-  });
-
-  let topCategory = "N/A";
-  let topCategoryAmount = 0;
-
-  for (const key in categoryTotals) {
-    if (categoryTotals[key] > topCategoryAmount) {
-      topCategory = key;
-      topCategoryAmount = categoryTotals[key];
-    }
-  }
+  const { topCategory, topCategoryAmount } = getTopCategory();
 
   console.log("\n===== FINANCIAL SUMMARY =====");
   console.log(`Budget: ₹${appData.budget.toFixed(2)}`);
@@ -525,7 +540,7 @@ function viewMonthlyDashboard() {
   showMenu();
 }
 
-// ================= REPORT EXPORT =================
+// ================= EXPORT =================
 
 function exportTxtReport() {
   const income = getIncomeTotal();
@@ -574,6 +589,34 @@ function backupData() {
   const backupName = `finances-backup-${new Date().toISOString().slice(0, 10)}.json`;
   fs.writeFileSync(backupName, JSON.stringify(appData, null, 2));
   console.log(`💾 Backup created: ${backupName}`);
+  showMenu();
+}
+
+// ================= RESET + HELP =================
+
+function resetAllData() {
+  rl.question("Are you sure you want to reset all data? (yes/no): ", (answer) => {
+    if (answer.trim().toLowerCase() === "yes") {
+      appData = { budget: 0, transactions: [] };
+      saveData();
+      console.log("🧹 All data reset successfully.");
+    } else {
+      console.log("Reset cancelled.");
+    }
+    showMenu();
+  });
+}
+
+function showHelp() {
+  console.log("\n===== HELP =====");
+  console.log("1-2: Add expense or income");
+  console.log("3-6: View transactions, totals, and balance");
+  console.log("7-9: Budget and category tools");
+  console.log("10-13: Edit, delete, search, filter");
+  console.log("14-18: Dashboard, reports, backup");
+  console.log("19: Reset everything");
+  console.log("20: Show this help");
+  console.log("21: Exit");
   showMenu();
 }
 
