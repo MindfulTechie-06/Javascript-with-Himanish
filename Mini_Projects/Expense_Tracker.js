@@ -12,7 +12,7 @@ const FILE = "finances.json";
 
 function loadData() {
   if (!fs.existsSync(FILE)) {
-    return { budget: 0, transactions: [] };
+    return { budget: 0, transactions: [], recurring: [] };
   }
 
   const raw = JSON.parse(fs.readFileSync(FILE, "utf-8"));
@@ -27,7 +27,8 @@ function loadData() {
         amount: Number(item.amount) || 0,
         category: item.category || "other",
         date: item.date || new Date().toLocaleString()
-      }))
+      })),
+      recurring: []
     };
   }
 
@@ -39,7 +40,18 @@ function loadData() {
       title: item.title || "Untitled",
       amount: Number(item.amount) || 0,
       category: item.category || "other",
-      date: item.date || new Date().toLocaleString()
+      date: item.date || new Date().toLocaleString(),
+      recurringId: item.recurringId || null
+    })),
+    recurring: (raw.recurring || []).map((item) => ({
+      id: item.id || Date.now(),
+      type: item.type || "expense",
+      title: item.title || "Untitled",
+      amount: Number(item.amount) || 0,
+      category: item.category || "other",
+      frequency: item.frequency || "monthly",
+      lastGenerated: item.lastGenerated || null,
+      active: item.active !== false
     }))
   };
 }
@@ -117,6 +129,55 @@ function getTopCategory() {
   return { topCategory, topCategoryAmount };
 }
 
+function dayDiff(a, b) {
+  const d1 = new Date(a);
+  const d2 = new Date(b);
+
+  d1.setHours(0, 0, 0, 0);
+  d2.setHours(0, 0, 0, 0);
+
+  return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+}
+
+function shouldGenerateRecurring(template) {
+  if (!template.active) return false;
+  if (!template.lastGenerated) return true;
+
+  const diff = dayDiff(template.lastGenerated, new Date());
+
+  if (template.frequency === "daily") return diff >= 1;
+  if (template.frequency === "weekly") return diff >= 7;
+  if (template.frequency === "monthly") return diff >= 30;
+
+  return false;
+}
+
+function generateRecurringTransactions() {
+  let changed = false;
+  const todayISO = new Date().toISOString();
+
+  appData.recurring.forEach((template) => {
+    if (shouldGenerateRecurring(template)) {
+      appData.transactions.push({
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        type: template.type,
+        title: template.title,
+        amount: template.amount,
+        category: template.category,
+        date: new Date().toLocaleString(),
+        recurringId: template.id
+      });
+
+      template.lastGenerated = todayISO;
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    saveData();
+  }
+}
+
 // ================= MENU =================
 
 function showMenu() {
@@ -139,9 +200,12 @@ function showMenu() {
   console.log("16. Export TXT Report");
   console.log("17. Export CSV Report");
   console.log("18. Backup Data");
-  console.log("19. Reset All Data");
-  console.log("20. Help");
-  console.log("21. Exit");
+  console.log("19. Add Recurring Transaction");
+  console.log("20. View Recurring Rules");
+  console.log("21. Toggle Recurring Rule");
+  console.log("22. Reset All Data");
+  console.log("23. Help");
+  console.log("24. Exit");
 
   rl.question("Choose an option: ", handleMenu);
 }
@@ -203,12 +267,21 @@ function handleMenu(choice) {
       backupData();
       break;
     case "19":
-      resetAllData();
+      addRecurringTransaction();
       break;
     case "20":
-      showHelp();
+      viewRecurringRules();
       break;
     case "21":
+      toggleRecurringRule();
+      break;
+    case "22":
+      resetAllData();
+      break;
+    case "23":
+      showHelp();
+      break;
+    case "24":
       console.log("Exiting...");
       rl.close();
       break;
@@ -592,12 +665,118 @@ function backupData() {
   showMenu();
 }
 
+// ================= RECURRING TRANSACTIONS =================
+
+function addRecurringTransaction() {
+  rl.question("Enter type (income/expense): ", (type) => {
+    const cleanType = type.trim().toLowerCase();
+
+    if (cleanType !== "income" && cleanType !== "expense") {
+      console.log("Invalid type");
+      showMenu();
+      return;
+    }
+
+    rl.question("Enter title: ", (title) => {
+      rl.question("Enter amount: ", (amount) => {
+        rl.question("Enter category: ", (category) => {
+          rl.question("Enter frequency (daily/weekly/monthly): ", (frequency) => {
+            const parsedAmount = parseFloat(amount);
+            const cleanFrequency = frequency.trim().toLowerCase();
+
+            if (isNaN(parsedAmount) || parsedAmount <= 0) {
+              console.log("Invalid amount");
+              showMenu();
+              return;
+            }
+
+            if (!["daily", "weekly", "monthly"].includes(cleanFrequency)) {
+              console.log("Invalid frequency");
+              showMenu();
+              return;
+            }
+
+            appData.recurring.push({
+              id: Date.now(),
+              type: cleanType,
+              title: title.trim(),
+              amount: parsedAmount,
+              category: category.trim().toLowerCase(),
+              frequency: cleanFrequency,
+              lastGenerated: null,
+              active: true
+            });
+
+            saveData();
+            console.log("✅ Recurring transaction added");
+            showMenu();
+          });
+        });
+      });
+    });
+  });
+}
+
+function viewRecurringRules() {
+  console.log("\n===== RECURRING RULES =====");
+
+  if (appData.recurring.length === 0) {
+    console.log("No recurring rules added yet.");
+  } else {
+    appData.recurring.forEach((item, index) => {
+      console.log(
+        `${index + 1}. [${item.type.toUpperCase()}] ${item.title} - ₹${item.amount} | ${item.category} | ${item.frequency} | ${item.active ? "Active" : "Inactive"}`
+      );
+    });
+  }
+
+  showMenu();
+}
+
+function toggleRecurringRule() {
+  viewRecurringRulesOnly();
+
+  rl.question("Enter recurring rule number to toggle: ", (num) => {
+    const index = parseInt(num) - 1;
+
+    if (!appData.recurring[index]) {
+      console.log("Invalid rule number");
+      showMenu();
+      return;
+    }
+
+    appData.recurring[index].active = !appData.recurring[index].active;
+    saveData();
+
+    console.log(
+      `✅ ${appData.recurring[index].title} is now ${appData.recurring[index].active ? "Active" : "Inactive"}`
+    );
+
+    showMenu();
+  });
+}
+
+function viewRecurringRulesOnly() {
+  console.log("\n===== RECURRING RULES =====");
+
+  if (appData.recurring.length === 0) {
+    console.log("No recurring rules added yet.");
+    return;
+  }
+
+  appData.recurring.forEach((item, index) => {
+    console.log(
+      `${index + 1}. [${item.type.toUpperCase()}] ${item.title} - ₹${item.amount} | ${item.category} | ${item.frequency} | ${item.active ? "Active" : "Inactive"}`
+    );
+  });
+}
+
 // ================= RESET + HELP =================
 
 function resetAllData() {
   rl.question("Are you sure you want to reset all data? (yes/no): ", (answer) => {
     if (answer.trim().toLowerCase() === "yes") {
-      appData = { budget: 0, transactions: [] };
+      appData = { budget: 0, transactions: [], recurring: [] };
       saveData();
       console.log("🧹 All data reset successfully.");
     } else {
@@ -614,12 +793,14 @@ function showHelp() {
   console.log("7-9: Budget and category tools");
   console.log("10-13: Edit, delete, search, filter");
   console.log("14-18: Dashboard, reports, backup");
-  console.log("19: Reset everything");
-  console.log("20: Show this help");
-  console.log("21: Exit");
+  console.log("19-21: Recurring transaction tools");
+  console.log("22: Reset everything");
+  console.log("23: Show this help");
+  console.log("24: Exit");
   showMenu();
 }
 
 // ================= START =================
 
+generateRecurringTransactions();
 showMenu();
