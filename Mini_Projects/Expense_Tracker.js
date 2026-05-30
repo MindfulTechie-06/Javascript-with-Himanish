@@ -10,6 +10,40 @@ const FILE = "finances.json";
 
 // ================= LOAD & SAVE =================
 
+function normalizeTransaction(item, defaultType = "expense") {
+  return {
+    id: item.id || Date.now(),
+    type: item.type || defaultType,
+    title: item.title || "Untitled",
+    amount: Number(item.amount) || 0,
+    category: item.category || "other",
+    date: item.date || new Date().toLocaleString(),
+    recurringId: item.recurringId || null
+  };
+}
+
+function normalizeRecurringRule(item) {
+  return {
+    id: item.id || Date.now(),
+    type: item.type || "expense",
+    title: item.title || "Untitled",
+    amount: Number(item.amount) || 0,
+    category: item.category || "other",
+    frequency: item.frequency || "monthly",
+    lastGenerated: item.lastGenerated || null,
+    active: item.active !== false
+  };
+}
+
+function normalizeGoal(item) {
+  return {
+    id: item.id || Date.now(),
+    name: item.name || "Untitled Goal",
+    target: Number(item.target) || 0,
+    createdAt: item.createdAt || new Date().toLocaleString()
+  };
+}
+
 function loadData() {
   if (!fs.existsSync(FILE)) {
     return { budget: 0, transactions: [], recurring: [], goals: [] };
@@ -20,15 +54,7 @@ function loadData() {
   if (Array.isArray(raw)) {
     return {
       budget: 0,
-      transactions: raw.map((item) => ({
-        id: item.id || Date.now(),
-        type: item.type || "expense",
-        title: item.title || "Untitled",
-        amount: Number(item.amount) || 0,
-        category: item.category || "other",
-        date: item.date || new Date().toLocaleString(),
-        recurringId: item.recurringId || null
-      })),
+      transactions: raw.map((item) => normalizeTransaction(item)),
       recurring: [],
       goals: []
     };
@@ -36,31 +62,9 @@ function loadData() {
 
   return {
     budget: raw.budget || 0,
-    transactions: (raw.transactions || []).map((item) => ({
-      id: item.id || Date.now(),
-      type: item.type || "expense",
-      title: item.title || "Untitled",
-      amount: Number(item.amount) || 0,
-      category: item.category || "other",
-      date: item.date || new Date().toLocaleString(),
-      recurringId: item.recurringId || null
-    })),
-    recurring: (raw.recurring || []).map((item) => ({
-      id: item.id || Date.now(),
-      type: item.type || "expense",
-      title: item.title || "Untitled",
-      amount: Number(item.amount) || 0,
-      category: item.category || "other",
-      frequency: item.frequency || "monthly",
-      lastGenerated: item.lastGenerated || null,
-      active: item.active !== false
-    })),
-    goals: (raw.goals || []).map((item) => ({
-      id: item.id || Date.now(),
-      name: item.name || "Untitled Goal",
-      target: Number(item.target) || 0,
-      createdAt: item.createdAt || new Date().toLocaleString()
-    }))
+    transactions: (raw.transactions || []).map((item) => normalizeTransaction(item)),
+    recurring: (raw.recurring || []).map((item) => normalizeRecurringRule(item)),
+    goals: (raw.goals || []).map((item) => normalizeGoal(item))
   };
 }
 
@@ -70,7 +74,7 @@ function saveData() {
 
 let appData = loadData();
 
-// ================= HELPERS =================
+// ================= BASIC HELPERS =================
 
 function getExpenseTotal() {
   return appData.transactions
@@ -147,6 +151,8 @@ function dayDiff(a, b) {
   return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
 }
 
+// ================= RECURRING HELPERS =================
+
 function shouldGenerateRecurring(template) {
   if (!template.active) return false;
   if (!template.lastGenerated) return true;
@@ -162,7 +168,6 @@ function shouldGenerateRecurring(template) {
 
 function generateRecurringTransactions() {
   let changed = false;
-  const todayISO = new Date().toISOString();
 
   appData.recurring.forEach((template) => {
     if (shouldGenerateRecurring(template)) {
@@ -176,7 +181,7 @@ function generateRecurringTransactions() {
         recurringId: template.id
       });
 
-      template.lastGenerated = todayISO;
+      template.lastGenerated = new Date().toISOString();
       changed = true;
     }
   });
@@ -205,6 +210,134 @@ function getGoalProgress(goal) {
   const balance = getBalance();
   if (goal.target <= 0) return 0;
   return Math.min((balance / goal.target) * 100, 100);
+}
+
+// ================= ANALYTICS HELPERS =================
+
+function getUniqueExpenseDates() {
+  return [...new Set(
+    appData.transactions
+      .filter((t) => t.type === "expense")
+      .map((t) => new Date(t.date).toDateString())
+  )].sort((a, b) => new Date(a) - new Date(b));
+}
+
+function getSpendingStreak() {
+  const dates = getUniqueExpenseDates();
+  if (dates.length === 0) return 0;
+
+  let streak = 1;
+  for (let i = dates.length - 1; i > 0; i--) {
+    const current = new Date(dates[i]);
+    const previous = new Date(dates[i - 1]);
+    const diff = (current - previous) / (1000 * 60 * 60 * 24);
+    if (diff === 1) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+function getMostExpensiveDay() {
+  const dayTotals = {};
+
+  appData.transactions
+    .filter((t) => t.type === "expense")
+    .forEach((transaction) => {
+      const day = new Date(transaction.date).toDateString();
+      dayTotals[day] = (dayTotals[day] || 0) + transaction.amount;
+    });
+
+  let highestDay = "N/A";
+  let highestAmount = 0;
+
+  for (const day in dayTotals) {
+    if (dayTotals[day] > highestAmount) {
+      highestAmount = dayTotals[day];
+      highestDay = day;
+    }
+  }
+
+  return { highestDay, highestAmount };
+}
+
+function getAverageDailySpending() {
+  const expenseTransactions = appData.transactions.filter((t) => t.type === "expense");
+  if (expenseTransactions.length === 0) return 0;
+
+  const days = new Set();
+  expenseTransactions.forEach((transaction) => {
+    days.add(new Date(transaction.date).toDateString());
+  });
+
+  return getExpenseTotal() / days.size;
+}
+
+function getTopThreeCategories() {
+  const categories = {};
+
+  appData.transactions
+    .filter((t) => t.type === "expense")
+    .forEach((transaction) => {
+      categories[transaction.category] = (categories[transaction.category] || 0) + transaction.amount;
+    });
+
+  return Object.entries(categories)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+}
+
+function getSavingsRate() {
+  const income = getIncomeTotal();
+  if (income === 0) return 0;
+
+  const savings = income - getExpenseTotal();
+  return (savings / income) * 100;
+}
+
+function getFinancialHealthScore() {
+  let score = 0;
+
+  const savingsRate = getSavingsRate();
+  if (savingsRate >= 30) score += 40;
+  else if (savingsRate >= 20) score += 30;
+  else if (savingsRate >= 10) score += 20;
+
+  const budgetOk = appData.budget > 0 && getExpenseTotal() <= appData.budget;
+  if (budgetOk) score += 30;
+
+  if (appData.goals.length > 0) score += 15;
+  if (appData.recurring.length > 0) score += 15;
+
+  return Math.min(score, 100);
+}
+
+function getSpendingTrendComparison() {
+  const monthMap = {};
+
+  appData.transactions
+    .filter((t) => t.type === "expense")
+    .forEach((transaction) => {
+      const d = new Date(transaction.date);
+      const key = `${d.getMonth() + 1}-${d.getFullYear()}`;
+      monthMap[key] = (monthMap[key] || 0) + transaction.amount;
+    });
+
+  const keys = Object.keys(monthMap).sort();
+  if (keys.length < 2) return null;
+
+  const last = monthMap[keys[keys.length - 1]];
+  const prev = monthMap[keys[keys.length - 2]];
+
+  return {
+    currentMonth: keys[keys.length - 1],
+    previousMonth: keys[keys.length - 2],
+    currentAmount: last,
+    previousAmount: prev,
+    difference: last - prev
+  };
 }
 
 // ================= MENU =================
@@ -238,7 +371,8 @@ function showMenu() {
   console.log("25. Delete Recurring Rule");
   console.log("26. Reset All Data");
   console.log("27. Help");
-  console.log("28. Exit");
+  console.log("28. Analytics Dashboard");
+  console.log("29. Exit");
 
   rl.question("Choose an option: ", handleMenu);
 }
@@ -327,6 +461,9 @@ function handleMenu(choice) {
       showHelp();
       break;
     case "28":
+      showAnalyticsDashboard();
+      break;
+    case "29":
       console.log("Exiting...");
       rl.close();
       break;
@@ -336,7 +473,7 @@ function handleMenu(choice) {
   }
 }
 
-// ================= ADD TRANSACTION =================
+// ================= TRANSACTIONS =================
 
 function addTransaction(type) {
   rl.question(`Enter ${type} title: `, (title) => {
@@ -371,8 +508,6 @@ function addTransaction(type) {
   });
 }
 
-// ================= VIEW TRANSACTIONS =================
-
 function viewTransactions() {
   console.log("\n===== TRANSACTION LIST =====");
 
@@ -389,8 +524,6 @@ function viewTransactions() {
   showMenu();
 }
 
-// ================= TOTALS =================
-
 function showTotalExpense() {
   console.log(`\n💸 Total Expense: ₹${getExpenseTotal().toFixed(2)}`);
   showMenu();
@@ -406,7 +539,7 @@ function showBalance() {
   showMenu();
 }
 
-// ================= CATEGORY SUMMARY =================
+// ================= CATEGORY / BUDGET =================
 
 function showCategorySummary() {
   if (appData.transactions.length === 0) {
@@ -425,8 +558,6 @@ function showCategorySummary() {
 
   showMenu();
 }
-
-// ================= BUDGET =================
 
 function setBudget() {
   rl.question("Enter monthly budget: ", (budget) => {
@@ -466,7 +597,7 @@ function showBudgetStatus() {
   showMenu();
 }
 
-// ================= EDIT / DELETE TRANSACTION =================
+// ================= EDIT / DELETE =================
 
 function editTransaction() {
   viewTransactionsOnly();
@@ -584,7 +715,7 @@ function filterTransactions() {
   });
 }
 
-// ================= SUMMARY / DASHBOARD =================
+// ================= SUMMARIES =================
 
 function viewFinancialSummary() {
   const income = getIncomeTotal();
@@ -672,9 +803,12 @@ Net Balance: ₹${balance.toFixed(2)}
 Remaining Budget: ₹${remaining.toFixed(2)}
 
 Transactions:
-${appData.transactions.map((transaction) =>
-`- [${transaction.type.toUpperCase()}] ${transaction.title} | ₹${transaction.amount.toFixed(2)} | ${transaction.category} | ${transaction.date}`
-).join("\n")}
+${appData.transactions
+  .map(
+    (transaction) =>
+      `- [${transaction.type.toUpperCase()}] ${transaction.title} | ₹${transaction.amount.toFixed(2)} | ${transaction.category} | ${transaction.date}`
+  )
+  .join("\n")}
 `;
 
   fs.writeFileSync("finance-report.txt", report.trim());
@@ -901,7 +1035,7 @@ function viewSavingsGoals() {
   showMenu();
 }
 
-// ================= RESET + HELP =================
+// ================= RESET / HELP =================
 
 function resetAllData() {
   rl.question("Are you sure you want to reset all data? (yes/no): ", (answer) => {
@@ -928,7 +1062,51 @@ function showHelp() {
   console.log("24-25: Manage recurring rules");
   console.log("26: Reset everything");
   console.log("27: Show this help");
-  console.log("28: Exit");
+  console.log("28: Analytics dashboard");
+  console.log("29: Exit");
+  showMenu();
+}
+
+// ================= ANALYTICS DASHBOARD =================
+
+function showAnalyticsDashboard() {
+  console.log("\n===== ANALYTICS DASHBOARD =====");
+
+  const streak = getSpendingStreak();
+  const expensiveDay = getMostExpensiveDay();
+  const avgDaily = getAverageDailySpending();
+  const topCategories = getTopThreeCategories();
+  const savingsRate = getSavingsRate();
+  const healthScore = getFinancialHealthScore();
+  const trend = getSpendingTrendComparison();
+
+  console.log(`🔥 Spending Streak: ${streak} days`);
+  console.log(`💸 Most Expensive Day: ${expensiveDay.highestDay}`);
+  console.log(`Amount: ₹${expensiveDay.highestAmount.toFixed(2)}`);
+  console.log(`📊 Average Daily Spending: ₹${avgDaily.toFixed(2)}`);
+  console.log(`💰 Savings Rate: ${savingsRate.toFixed(2)}%`);
+  console.log(`🏆 Financial Health Score: ${healthScore}/100`);
+
+  console.log("\nTop Categories:");
+  if (topCategories.length === 0) {
+    console.log("No expense categories found.");
+  } else {
+    topCategories.forEach(([category, amount], index) => {
+      console.log(`${index + 1}. ${category} - ₹${amount.toFixed(2)}`);
+    });
+  }
+
+  console.log("\nTrend Comparison:");
+  if (!trend) {
+    console.log("Not enough data for a month-over-month comparison.");
+  } else {
+    const direction = trend.difference >= 0 ? "higher" : "lower";
+    console.log(
+      `${trend.currentMonth}: ₹${trend.currentAmount.toFixed(2)} vs ${trend.previousMonth}: ₹${trend.previousAmount.toFixed(2)}`
+    );
+    console.log(`Current month is ${Math.abs(trend.difference).toFixed(2)} ${direction} than previous month.`);
+  }
+
   showMenu();
 }
 
