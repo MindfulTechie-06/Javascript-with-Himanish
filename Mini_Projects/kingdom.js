@@ -11,29 +11,7 @@ const rl = readline.createInterface({
 let kingdom = null;
 
 // ======================
-// LOAD KINGDOM
-// ======================
-
-function loadKingdom() {
-  if (fs.existsSync(FILE)) {
-    kingdom = JSON.parse(
-      fs.readFileSync(FILE, "utf8")
-    );
-
-    // Upgrade Day 1 Save
-    if (!kingdom.wood) kingdom.wood = 200;
-    if (!kingdom.stone) kingdom.stone = 150;
-    if (!kingdom.logs) kingdom.logs = [];
-
-    console.log("\n👑 Kingdom Loaded!");
-    mainMenu();
-  } else {
-    createKingdom();
-  }
-}
-
-// ======================
-// SAVE
+// SAVE SYSTEM
 // ======================
 
 function saveKingdom() {
@@ -48,6 +26,7 @@ function saveKingdom() {
 // ======================
 
 function addLog(message) {
+
   kingdom.logs.push({
     time: new Date().toLocaleString(),
     message
@@ -57,22 +36,127 @@ function addLog(message) {
 }
 
 // ======================
+// DAY SYSTEM
+// ======================
+
+function nextDay() {
+
+  kingdom.day++;
+
+  const foodConsumed =
+    kingdom.population;
+
+  kingdom.food -= foodConsumed;
+
+  const farmProduction =
+    kingdom.buildings.farm * 50;
+
+  kingdom.food += farmProduction;
+
+  if (kingdom.food < 0) {
+
+    kingdom.food = 0;
+
+    kingdom.population =
+      Math.max(
+        10,
+        kingdom.population - 5
+      );
+
+    addLog(
+      "Food shortage! Population decreased."
+    );
+  }
+
+  else if (
+    kingdom.food >
+    kingdom.population * 2
+  ) {
+
+    kingdom.population += 2;
+
+    addLog(
+      "Population increased."
+    );
+  }
+
+  randomEvent();
+
+  saveKingdom();
+}
+
+// ======================
+// RANDOM EVENTS
+// ======================
+
+function randomEvent() {
+
+  const chance = Math.random();
+
+  if (chance < 0.15) {
+
+    kingdom.gold += 100;
+
+    console.log(
+      "🎁 Merchant donated 100 gold!"
+    );
+
+    addLog(
+      "Merchant donated 100 gold."
+    );
+  }
+
+  else if (chance < 0.30) {
+
+    kingdom.food += 80;
+
+    console.log(
+      "🌾 Good harvest! +80 food"
+    );
+
+    addLog(
+      "Good harvest +80 food."
+    );
+  }
+
+  else if (chance < 0.40) {
+
+    kingdom.wood =
+      Math.max(
+        0,
+        kingdom.wood - 50
+      );
+
+    console.log(
+      "🔥 Fire destroyed 50 wood!"
+    );
+
+    addLog(
+      "Fire destroyed 50 wood."
+    );
+  }
+}
+
+// ======================
 // CREATE KINGDOM
 // ======================
 
 function createKingdom() {
 
-  console.log("\n===== CREATE KINGDOM =====");
+  console.log(
+    "\n===== CREATE KINGDOM ====="
+  );
 
   rl.question(
-    "Enter Kingdom Name: ",
+    "Kingdom Name: ",
     (kingdomName) => {
 
       rl.question(
-        "Enter Ruler Name: ",
+        "Ruler Name: ",
         (rulerName) => {
 
           kingdom = {
+
             kingdomName,
             rulerName,
 
@@ -82,16 +166,22 @@ function createKingdom() {
             stone: 150,
             population: 100,
 
+            day: 1,
+
             logs: [],
 
-            createdAt:
-              new Date().toLocaleString()
+            buildings: {
+              farm: 0,
+              house: 0,
+              lumberMill: 0,
+              quarry: 0
+            }
           };
 
           saveKingdom();
 
           console.log(
-            "\n🎉 Kingdom Created!"
+            "🎉 Kingdom Created!"
           );
 
           mainMenu();
@@ -102,269 +192,44 @@ function createKingdom() {
 }
 
 // ======================
-// STATUS
+// LOAD KINGDOM
 // ======================
 
-function viewKingdomStatus() {
+function loadKingdom() {
 
-  console.log("\n====================");
-  console.log("👑 KINGDOM STATUS");
-  console.log("====================");
+  if (fs.existsSync(FILE)) {
 
-  console.log(
-    `Kingdom : ${kingdom.kingdomName}`
-  );
+    kingdom = JSON.parse(
+      fs.readFileSync(
+        FILE,
+        "utf8"
+      )
+    );
 
-  console.log(
-    `Ruler   : ${kingdom.rulerName}`
-  );
+    if (!kingdom.day)
+      kingdom.day = 1;
 
-  console.log(
-    `Gold    : ${kingdom.gold}`
-  );
+    if (!kingdom.logs)
+      kingdom.logs = [];
 
-  console.log(
-    `Food    : ${kingdom.food}`
-  );
+    if (!kingdom.buildings) {
 
-  console.log(
-    `Wood    : ${kingdom.wood}`
-  );
+      kingdom.buildings = {
+        farm: 0,
+        house: 0,
+        lumberMill: 0,
+        quarry: 0
+      };
+    }
 
-  console.log(
-    `Stone   : ${kingdom.stone}`
-  );
+    console.log(
+      "👑 Kingdom Loaded!"
+    );
 
-  console.log(
-    `Population : ${kingdom.population}`
-  );
-}
-
-// ======================
-// GATHER WOOD
-// ======================
-
-function gatherWood() {
-
-  const woodCollected =
-    Math.floor(Math.random() * 100) + 50;
-
-  kingdom.wood += woodCollected;
-
-  addLog(
-    `Gathered ${woodCollected} wood`
-  );
-
-  console.log(
-    `🌲 Collected ${woodCollected} wood`
-  );
-
-  saveKingdom();
-
-  mainMenu();
-}
-
-// ======================
-// MINE STONE
-// ======================
-
-function mineStone() {
-
-  const stoneCollected =
-    Math.floor(Math.random() * 80) + 40;
-
-  kingdom.stone += stoneCollected;
-
-  addLog(
-    `Mined ${stoneCollected} stone`
-  );
-
-  console.log(
-    `⛏ Collected ${stoneCollected} stone`
-  );
-
-  saveKingdom();
-
-  mainMenu();
-}
-
-// ======================
-// HUNT FOOD
-// ======================
-
-function huntFood() {
-
-  const foodCollected =
-    Math.floor(Math.random() * 120) + 60;
-
-  kingdom.food += foodCollected;
-
-  addLog(
-    `Hunted ${foodCollected} food`
-  );
-
-  console.log(
-    `🍖 Collected ${foodCollected} food`
-  );
-
-  saveKingdom();
-
-  mainMenu();
-}
-
-// ======================
-// RESOURCE DASHBOARD
-// ======================
-
-function resourceDashboard() {
-
-  console.log("\n===== RESOURCES =====");
-
-  console.log(
-    `💰 Gold : ${kingdom.gold}`
-  );
-
-  console.log(
-    `🍖 Food : ${kingdom.food}`
-  );
-
-  console.log(
-    `🌲 Wood : ${kingdom.wood}`
-  );
-
-  console.log(
-    `🪨 Stone: ${kingdom.stone}`
-  );
-
-  console.log(
-    `👥 Population: ${kingdom.population}`
-  );
-
-  mainMenu();
-}
-
-// ======================
-// ACTIVITY LOG
-// ======================
-
-function viewLogs() {
-
-  console.log(
-    "\n===== ACTIVITY LOG ====="
-  );
-
-  if (kingdom.logs.length === 0) {
-
-    console.log("No logs available.");
-
-  } else {
-
-    kingdom.logs
-      .slice(-10)
-      .forEach((log, index) => {
-
-        console.log(
-          `${index + 1}. ${log.time}`
-        );
-
-        console.log(
-          `   ${log.message}`
-        );
-      });
+    mainMenu();
   }
 
-  mainMenu();
+  else {
+    createKingdom();
+  }
 }
-
-// ======================
-// MENU
-// ======================
-
-function mainMenu() {
-
-  console.log(
-    "\n===== CODECRAFT KINGDOM ====="
-  );
-
-  console.log("1. View Kingdom");
-
-  console.log("2. Gather Wood");
-
-  console.log("3. Mine Stone");
-
-  console.log("4. Hunt Food");
-
-  console.log("5. Resource Dashboard");
-
-  console.log("6. View Activity Log");
-
-  console.log("7. Save Kingdom");
-
-  console.log("8. Exit");
-
-  rl.question(
-    "\nChoose Option: ",
-    (choice) => {
-
-      switch (choice) {
-
-        case "1":
-          viewKingdomStatus();
-          mainMenu();
-          break;
-
-        case "2":
-          gatherWood();
-          break;
-
-        case "3":
-          mineStone();
-          break;
-
-        case "4":
-          huntFood();
-          break;
-
-        case "5":
-          resourceDashboard();
-          break;
-
-        case "6":
-          viewLogs();
-          break;
-
-        case "7":
-          saveKingdom();
-          console.log(
-            "💾 Kingdom Saved!"
-          );
-          mainMenu();
-          break;
-
-        case "8":
-          console.log(
-            "\n👋 Farewell, Your Majesty!"
-          );
-          rl.close();
-          break;
-
-        default:
-          console.log(
-            "❌ Invalid Choice"
-          );
-          mainMenu();
-      }
-    }
-  );
-}
-
-// ======================
-// START GAME
-// ======================
-
-console.log(
-  "\n🏰 Welcome To CodeCraft Kingdom"
-);
-
-loadKingdom()
-if (!kingdom.logs) kingdom.logs = [];
