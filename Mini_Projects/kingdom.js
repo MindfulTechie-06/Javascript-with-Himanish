@@ -366,4 +366,5 @@ console.log(
   "\n🏰 Welcome To CodeCraft Kingdom"
 );
 
-loadKingdom();
+loadKingdom()
+if (!kingdom.logs) kingdom.logs = [];
